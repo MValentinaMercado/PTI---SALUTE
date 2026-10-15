@@ -1,0 +1,256 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Devuelve el familyId del uid dado, o null si no pertenece a
+    // ninguna familia (o si el documento de usuario no existe). Se usa
+    // para decidir si dos cuentas comparten familia sin tener que
+    // repetir el `get()` en cada regla.
+    function familyOf(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.familyId;
+    }
+
+    // Datos del perfil (para chequear dueño y consentimiento de
+    // compartir), en un solo lugar para no repetir el `get()`.
+    function profileData(profileId) {
+      return get(/databases/$(database)/documents/profiles/$(profileId)).data;
+    }
+
+    // `true` si `uid` puede ver los datos CLÍNICOS del perfil (no solo
+    // su existencia): o es quien lo administra, o quien lo administra
+    // decidió compartirlo explícitamente con este uid (`sharedWithUids`).
+    // Es información de salud —dato sensible—, así que a diferencia de
+    // `profiles` (donde alcanza con compartir familia), acá el opt-in
+    // tiene que ser explícito por persona.
+    function canSeeClinicalData(profileId, uid) {
+      let p = profileData(profileId);
+      return uid == p.uid || uid in p.get('sharedWithUids', []);
+    }
+
+    // ── users/{uid} ────────────────────────────────────────────────
+    // Documento de cuenta. Solo el propio usuario lo lee/escribe.
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── families/{familyId} ─────────────────────────────────────────
+    // FEAT-001/002. El código (`code`) es lo que protege a la familia
+    // de que cualquiera se sume sin invitación; el documento en sí no
+    // tiene datos sensibles (nombre, código, dueño, lista de uids), así
+    // que se puede leer estando logueado —se necesita para poder
+    // buscar por código al unirse—. Lo que sí se restringe es la
+    // escritura:
+    //   - el dueño puede editar cualquier campo (ej. renombrar);
+    //   - cualquier otro usuario logueado solo puede agregarse a sí
+    //     mismo a `memberUids` (unirse con el código), no tocar nada
+    //     más ni sacar a otros miembros.
+    match /families/{familyId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+                          && request.resource.data.ownerUid == request.auth.uid
+                          && request.resource.data.memberUids == [request.auth.uid];
+
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.ownerUid
+        ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids'])
+          && request.resource.data.memberUids == resource.data.memberUids.concat([request.auth.uid])
+        )
+        ||
+        // Un integrante puede SALIR de la familia (quitarse a sí mismo).
+        // Hace falta para poder eliminar la cuenta.
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids'])
+          && request.auth.uid in resource.data.memberUids
+          && request.resource.data.memberUids == resource.data.memberUids.removeAll([request.auth.uid])
+        )
+      );
+
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+    }
+
+    // ── familyInvites/{inviteId} ────────────────────────────────────
+    // FEAT-003. Registro de a quién se le mandó el código por email.
+    // Solo quien invitó puede crearla/editarla/borrarla; puede leerla
+    // cualquier miembro de esa misma familia (así "Mi familia" puede
+    // mostrar "invitados pendientes" sin importar quién mandó cada
+    // invitación).
+    match /familyInvites/{inviteId} {
+      allow create: if request.auth != null
+                          && request.resource.data.invitedByUid == request.auth.uid;
+
+      allow read: if request.auth != null
+                          && resource.data.familyId != null
+                          && resource.data.familyId == familyOf(request.auth.uid);
+
+      allow update, delete: if request.auth != null
+                          && request.auth.uid == resource.data.invitedByUid;
+    }
+
+    // ── mail/{mailId} ────────────────────────────────────────────────
+    // Consumida por la extensión "Trigger Email" de Firebase (manda el
+    // mail de invitación de FEAT-003). Solo se puede crear —nunca leer
+    // ni editar—: el envío y el estado los maneja la extensión con
+    // permisos de administrador, que no pasa por estas reglas.
+    match /mail/{mailId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+
+    // ── profiles/{profileId} ───────────────────────────────────────
+    // Personas y mascotas del grupo familiar. `resource.data.uid` es
+    // quien administra el perfil (dueño de la cuenta que lo creó). En
+    // create todavía no existe `resource`, así que se valida contra el
+    // `uid` que viene en el documento nuevo.
+    //
+    // BUG-002/FEAT-001/002: la LECTURA se abre también a cualquier
+    // usuario que comparta el mismo `familyId` (así los miembros de la
+    // familia se ven entre sí), pero la ESCRITURA (update/delete) sigue
+    // restringida solo a quien administra ese perfil —un miembro no
+    // puede editar el perfil de otro, ni sus dependientes—.
+    //
+    // OJO: el documento raíz solo debe tener lo BÁSICO (nombre, relación,
+    // tipo, nacimiento, avatar, familyId, sharedWithUids...). Los datos
+    // clínicos (grupo sanguíneo, alergias, contacto de emergencia, obra
+    // social, último chequeo, peso) viven en `datos_clinicos/ficha`, más
+    // abajo, con el mismo consentimiento que el resto de lo clínico.
+    match /profiles/{profileId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.uid
+        ||
+        (
+          resource.data.familyId != null
+          && resource.data.familyId == familyOf(request.auth.uid)
+        )
+      );
+
+      allow update, delete: if request.auth != null
+                          && request.auth.uid == resource.data.uid;
+
+      allow create: if request.auth != null
+                          && request.auth.uid == request.resource.data.uid;
+
+      // ── Subcolecciones de cada perfil ──────────────────────────
+      // BUG-002/legal: la LECTURA de esto (información clínica, no
+      // solo "quién es quién") requiere consentimiento explícito de
+      // quien administra el perfil, además de compartir familia. Ver
+      // `canSeeClinicalData` y `sharedWithUids` en el modelo. La
+      // ESCRITURA sigue siendo solo de quien administra el perfil: un
+      // miembro con acceso de lectura no puede cargar ni editar datos
+      // por otro.
+      // Ficha clínica del perfil (un solo documento: `ficha`). Es lo que
+      // antes estaba en el documento raíz y se podía leer estando solo
+      // en la misma familia.
+      match /datos_clinicos/{docId} {
+        allow read: if request.auth != null && canSeeClinicalData(profileId, request.auth.uid);
+        allow write: if request.auth != null
+                          && request.auth.uid == profileData(profileId).uid;
+      }
+
+      match /historial/{recordId} {
+        allow read: if request.auth != null && canSeeClinicalData(profileId, request.auth.uid);
+        allow write: if request.auth != null
+                          && request.auth.uid == profileData(profileId).uid;
+      }
+
+      match /vacunas/{vaccineId} {
+        allow read: if request.auth != null && canSeeClinicalData(profileId, request.auth.uid);
+        allow write: if request.auth != null
+                          && request.auth.uid == profileData(profileId).uid;
+      }
+
+      match /medicacion/{medId} {
+        allow read: if request.auth != null && canSeeClinicalData(profileId, request.auth.uid);
+        allow write: if request.auth != null
+                          && request.auth.uid == profileData(profileId).uid;
+      }
+
+      match /recetas/{recetaId} {
+        allow read: if request.auth != null && canSeeClinicalData(profileId, request.auth.uid);
+        allow write: if request.auth != null
+                          && request.auth.uid == profileData(profileId).uid;
+      }
+
+      // Registro de tomas de medicación (checklist "tomada / no tomada").
+      // Un documento por toma, con id `{medId}_{yyyyMMddHHmm}`. Misma
+      // política que `medicacion`: leen quienes tienen consentimiento
+      // clínico; escribe solo quien administra el perfil.
+      match /tomas/{doseId} {
+        allow read: if request.auth != null && canSeeClinicalData(profileId, request.auth.uid);
+        allow write: if request.auth != null
+                          && request.auth.uid == profileData(profileId).uid;
+      }
+    }
+
+    // ── botiquin/{itemId} ───────────────────────────────────────────
+    // Inventario familiar de medicamentos, no atado a un perfil puntual.
+    match /botiquin/{itemId} {
+      allow read, update, delete: if request.auth != null
+                          && request.auth.uid == resource.data.uid;
+      allow create: if request.auth != null
+                          && request.auth.uid == request.resource.data.uid;
+    }
+
+    // ── diario/{entryId} ────────────────────────────────────────────
+    // Diario personal de bienestar del usuario (no de un perfil/mascota).
+    match /diario/{entryId} {
+      allow read, update, delete: if request.auth != null
+                          && request.auth.uid == resource.data.uid;
+      allow create: if request.auth != null
+                          && request.auth.uid == request.resource.data.uid;
+    }
+
+    // ── agenda/{eventId} ────────────────────────────────────────────
+    // Turnos, estudios y recordatorios, ligados a un perfil vía profileId.
+    // Legal: la lectura respeta el mismo consentimiento explícito que
+    // el resto de los datos clínicos (`canSeeClinicalData`), no solo
+    // pertenecer a la misma familia.
+    match /agenda/{eventId} {
+      allow read: if request.auth != null
+                          && canSeeClinicalData(resource.data.profileId, request.auth.uid);
+      allow update, delete: if request.auth != null
+                          && request.auth.uid == resource.data.uid;
+      // BUGFIX: antes solo se validaba `uid == auth.uid`, sin chequear
+      // `profileId`. Eso permitía crear un evento para un perfil sobre
+      // el que no se tiene consentimiento clínico (ej. perfil activo de
+      // un familiar sin `sharedWithUids`). Ese documento después no
+      // pasaba la regla de `read` de arriba, y como `watchAll()` filtra
+      // por `uid` (no por `profileId`), Firestore rechazaba la QUERY
+      // ENTERA con permission-denied en vez de omitir ese documento
+      // (así es como Firestore trata las queries de lista: si un solo
+      // resultado posible no pasa la regla, se rechaza toda la
+      // consulta). Ahora `create` exige lo mismo que `read`, así nunca
+      // se puede generar un evento ilegible para su propio creador.
+      allow create: if request.auth != null
+                          && request.auth.uid == request.resource.data.uid
+                          && canSeeClinicalData(request.resource.data.profileId, request.auth.uid);
+    }
+
+    // ── vitals/{entryId} ────────────────────────────────────────────
+    // Registros de signos vitales / bienestar, ligados a un perfil vía
+    // profileId (mismo patrón que agenda, mismo criterio legal).
+    match /vitals/{entryId} {
+      allow read: if request.auth != null
+                          && canSeeClinicalData(resource.data.profileId, request.auth.uid);
+      allow update, delete: if request.auth != null
+                          && request.auth.uid == resource.data.uid;
+      // Mismo hueco que había en `agenda`: `create` no validaba nada
+      // sobre `profileId`. Hoy no rompe `watchForProfile` (filtra por
+      // `profileId`, consistente con `read`), pero permitía que
+      // cualquier usuario logueado escribiera un signo vital para un
+      // perfil sobre el que no tiene ningún vínculo. Se cierra igual
+      // que en `agenda`, por las dudas.
+      allow create: if request.auth != null
+                          && request.auth.uid == request.resource.data.uid
+                          && canSeeClinicalData(request.resource.data.profileId, request.auth.uid);
+    }
+
+    // Nada más es accesible por default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
