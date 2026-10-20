@@ -404,7 +404,7 @@ const String _scanPrompt =
 const List<_AiOption> _aiOptions = [
   _AiOption(
     model: AiModel(
-      id: 'gemini-3.6-flash',
+      id: 'gemini-3.8-flash',
       name: 'Gemini Flash',
       provider: AiProvider.gemini,
     ),

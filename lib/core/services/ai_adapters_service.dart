@@ -70,10 +70,9 @@ Never _throwHttpError(String provider, http.Response response) {
   final hint = switch (response.statusCode) {
     400 => 'solicitud inválida',
     401 || 403 => 'clave inválida o sin permisos',
+    402 => 'no hay créditos disponibles',
     404 => 'modelo inexistente',
     429 => 'cuota agotada o demasiadas solicitudes',
-    503 => 'el modelo está saturado, probá de nuevo en un momento',
-    >= 500 => 'el proveedor tiene problemas',
     _ => 'error',
   };
   throw AiException(
