@@ -74,7 +74,7 @@ En la mayoría de los hogares la información médica está dispersa: recetas ar
 
 ### Inteligencia artificial
 
-Una de las limitaciones que encontramos durante el desarrollo fue el uso de las inteligencias artificiales. Al principio, la idea era que cada usuario pudiera elegir qué IA quería utilizar e iniciar sesión con su propia cuenta. Sin embargo, durante el desarrollo decidimos seleccionar nosotras tres modelos y adaptarlos mejor al objetivo del proyecto.
+Una de las limitaciones que encontramos durante el desarrollo fue el uso de las inteligencias artificiales. Al principio, la idea era que cada usuario pudiera elegir qué IA quería utilizar e iniciar sesión con su propia cuenta. Sin embargo, durante el desarrollo decidimos seleccionar nosotras dos modelos y adaptarlos mejor al objetivo del proyecto.
 
 El principal inconveniente fue que trabajar con estos modelos requiere recursos y créditos para que puedan funcionar. Al agotarse los créditos disponibles, no pudimos seguir realizando pruebas ni mantener todas las funcionalidades activas. Por este motivo, la sección de IA quedó limitada.
 
