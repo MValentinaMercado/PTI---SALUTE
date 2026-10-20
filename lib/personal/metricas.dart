@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:saluteapp/components/app_header.dart';
 import 'package:saluteapp/components/design_system.dart';
 import 'package:saluteapp/components/design_patterns.dart';
 import 'package:saluteapp/core/colors.dart';
@@ -309,8 +308,9 @@ class _BiometricsScreenState extends State<BiometricsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            AppHeader.secondary(
-              title: 'Métricas · ${widget.profileName}',
+            DsScreenHeader(
+              title: 'Métricas',
+              subtitle: widget.profileName,
               onBack: widget.onBackToDashboard,
             ),
             Expanded(
@@ -376,7 +376,7 @@ class _BiometricsScreenState extends State<BiometricsScreen> {
                           ),
                           ready: _aiReady(latest),
                           notReadyHint:
-                              'Registrá o sincronizá al menos dos métricas para poder analizar.',
+                          'Registrá o sincronizá al menos dos métricas para poder analizar.',
                         ),
                         const SizedBox(height: DsSpacing.xxl),
                       ],

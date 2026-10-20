@@ -18,12 +18,12 @@ const EdgeInsets _screenPadding = EdgeInsets.fromLTRB(20, 16, 20, 16);
 const Color _alertRed = Color(0xFFB03A3A);
 
 List<BoxShadow> _softShadow([double alpha = 0.05]) => [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: alpha),
-        blurRadius: 14,
-        offset: const Offset(0, 4),
-      ),
-    ];
+  BoxShadow(
+    color: Colors.black.withValues(alpha: alpha),
+    blurRadius: 14,
+    offset: const Offset(0, 4),
+  ),
+];
 
 class FamilyProfileData {
   final String name;
@@ -225,7 +225,7 @@ class FamiliarProfileScreen extends StatelessWidget {
                       onChangePhoto: onChangePhoto,
                     ),
                     const SizedBox(height: 28),
-                    const _SectionTitle(title: 'Resumen clínico', icon: Icons.monitor_heart_outlined),
+                    const _SectionTitle(title: 'Resumen clínico'),
                     const SizedBox(height: 14),
                     _ClinicalOverviewGrid(member: member),
                     if (!member.isPet) ...[
@@ -242,22 +242,22 @@ class FamiliarProfileScreen extends StatelessWidget {
                     member.isPet
                         ? _WellbeingCard(member: member, onTap: onOpenWellbeing)
                         : HealthStatusCard(
-                            latest: member.latestVital,
-                            onTap: onOpenWellbeing,
-                          ),
+                      latest: member.latestVital,
+                      onTap: onOpenWellbeing,
+                    ),
                     const SizedBox(height: 14),
                     if (onOpenVaccines != null) ...[
                       _VaccineBanner(onTap: onOpenVaccines!),
                       const SizedBox(height: 14),
                     ],
                     const SizedBox(height: 14),
-                    const _SectionTitle(title: 'Alertas', icon: Icons.notifications_active_outlined),
+                    const _SectionTitle(title: 'Alertas'),
                     const SizedBox(height: 12),
                     if (member.alerts.isEmpty)
                       _EmptySectionHint(text: 'No hay turnos ni alertas pendientes para ${member.name}.')
                     else
                       ...member.alerts.expand(
-                        (alert) => [
+                            (alert) => [
                           _AlertCard(
                             tag: alert.tag,
                             title: alert.title,
@@ -269,7 +269,7 @@ class FamiliarProfileScreen extends StatelessWidget {
                         ],
                       ),
                     const SizedBox(height: 20),
-                    const _SectionTitle(title: 'Medicación actual', icon: Icons.medication_outlined),
+                    const _SectionTitle(title: 'Medicación actual'),
                     const SizedBox(height: 12),
                     if (member.medications.isNotEmpty && onOpenChecklist != null) ...[
                       _ChecklistBanner(onTap: onOpenChecklist!),
@@ -279,7 +279,7 @@ class FamiliarProfileScreen extends StatelessWidget {
                       const _EmptySectionHint(text: 'Sin medicación activa registrada.')
                     else
                       ...member.medications.map(
-                        (medication) => _MedicationItem(
+                            (medication) => _MedicationItem(
                           name: medication.name,
                           dose: medication.dose,
                           progress: medication.progress,
@@ -305,33 +305,33 @@ class FamiliarProfileScreen extends StatelessWidget {
 // SECTION TITLE HELPER
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Mismo estilo de encabezado de sección que usa la pantalla de Salute IA:
+/// barra vertical verde a la izquierda + título grande.
 class _SectionTitle extends StatelessWidget {
   final String title;
-  final IconData icon;
-  const _SectionTitle({required this.title, required this.icon});
+  const _SectionTitle({required this.title});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Container(
-          width: 32,
-          height: 32,
+          width: 5,
+          height: 28,
           decoration: BoxDecoration(
-            color: SaluteColors.lightGreen.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(10),
+            color: SaluteColors.primaryGreen,
+            borderRadius: BorderRadius.circular(3),
           ),
-          child: Icon(icon, size: 18, color: SaluteColors.primaryGreen),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Flexible(
           child: Text(
             title,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w900,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
               color: Colors.black87,
             ),
           ),
@@ -405,81 +405,81 @@ class _ProfileHeaderCard extends StatelessWidget {
             child: SizedBox(
               width: double.infinity,
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ProfileAvatar(
-                  avatarUrl: member.avatarUrl,
-                  type: member.isPet ? ProfileType.mascota : ProfileType.persona,
-                  name: member.name,
-                  radius: 50,
-                  ring: true,
-                  showInitial: false,
-                  onEditPhoto: onChangePhoto,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  member.name,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: -0.3,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  ProfileAvatar(
+                    avatarUrl: member.avatarUrl,
+                    type: member.isPet ? ProfileType.mascota : ProfileType.persona,
+                    name: member.name,
+                    radius: 50,
+                    ring: true,
+                    showInitial: false,
+                    onEditPhoto: onChangePhoto,
                   ),
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 16),
                   Text(
-                    subtitle,
-                    maxLines: 1,
+                    member.name,
+                    maxLines: 2,
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.3,
                     ),
                   ),
-                ],
-                if (member.badges.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                  if (member.badges.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: member.badges.map((b) => _HeaderChip(label: b)).toList(),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  // Wrap: si no entran los botones en la fila, el de editar baja
+                  // de línea en vez de desbordar el ancho de la tarjeta.
                   Wrap(
                     alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: member.badges.map((b) => _HeaderChip(label: b)).toList(),
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _HeaderButton(
+                        icon: Icons.medical_information_outlined,
+                        label: member.isPet ? 'Ficha veterinaria' : 'Ficha médica',
+                        filled: true,
+                        accent: accent,
+                        onTap: onQuickRecord,
+                        tooltip: 'Ver ficha médica',
+                      ),
+                      if (onEdit != null)
+                        _HeaderButton(
+                          icon: Icons.edit_outlined,
+                          label: 'Editar',
+                          filled: false,
+                          onTap: onEdit,
+                          tooltip: 'Editar perfil',
+                        ),
+                    ],
                   ),
                 ],
-                const SizedBox(height: 18),
-                // Wrap: si no entran los botones en la fila, el de editar baja
-                // de línea en vez de desbordar el ancho de la tarjeta.
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _HeaderButton(
-                      icon: Icons.medical_information_outlined,
-                      label: member.isPet ? 'Ficha veterinaria' : 'Ficha médica',
-                      filled: true,
-                      accent: accent,
-                      onTap: onQuickRecord,
-                      tooltip: 'Ver ficha médica',
-                    ),
-                    if (onEdit != null)
-                      _HeaderButton(
-                        icon: Icons.edit_outlined,
-                        label: 'Editar',
-                        filled: false,
-                        onTap: onEdit,
-                        tooltip: 'Editar perfil',
-                      ),
-                  ],
-                ),
-              ],
-            ),
+              ),
             ),
           ),
         ],

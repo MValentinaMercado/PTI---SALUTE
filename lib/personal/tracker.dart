@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:saluteapp/components/ai_insight_card.dart';
 import 'package:saluteapp/components/design_patterns.dart';
 import 'package:saluteapp/core/colors.dart';
@@ -265,8 +264,9 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
         child: Column(
           children: [
             // ── AppBar ──────────────────────────────────────────────────────
-            _MoodAppBar(
-              profileName: widget.profileName,
+            DsScreenHeader(
+              title: 'Estado emocional',
+              subtitle: widget.profileName,
               onBack: widget.onBackToDashboard,
             ),
             // ── Contenido ────────────────────────────────────────────────────
@@ -324,61 +324,6 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// APP BAR
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _MoodAppBar extends StatelessWidget {
-  final String profileName;
-  final VoidCallback? onBack;
-  const _MoodAppBar({required this.profileName, this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-      child: Row(
-        children: [
-          A11yTap(
-            label: 'Volver',
-            onTap: onBack ?? () => Navigator.maybePop(context),
-            child: const Icon(
-              Icons.arrow_back,
-              color: SaluteColors.primaryGreen,
-              size: 24,
-            ),
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                const Text(
-                  'Estado emocional',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: SaluteColors.primaryGreen,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  profileName,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: SaluteColors.textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 24), // balance visual
-        ],
       ),
     );
   }

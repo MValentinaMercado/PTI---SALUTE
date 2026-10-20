@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:saluteapp/components/ai_insight_card.dart';
-import 'package:saluteapp/components/app_header.dart';
+import 'package:saluteapp/components/design_patterns.dart';
 import 'package:saluteapp/components/voice_buttons.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/medical_record.dart';
@@ -361,8 +361,9 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            AppHeader.secondary(
-              title: 'Bitacora de Triaje',
+            DsScreenHeader(
+              title: 'Bitácora de Triaje',
+              subtitle: widget.profileName,
               onBack: widget.onBackToDashboard,
             ),
             Expanded(

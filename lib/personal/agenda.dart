@@ -1,7 +1,7 @@
 import 'package:saluteapp/components/text_scale.dart';
 import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:flutter/material.dart';
-import 'package:saluteapp/components/app_header.dart';
+import 'package:saluteapp/components/design_patterns.dart';
 import 'package:saluteapp/core/active_profile_controller.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/agenda_event.dart';
@@ -284,112 +284,112 @@ class _AgendaScreenState extends State<AgendaScreen> {
         if (!didPop && _selecting) _exitSelecting();
       },
       child: Scaffold(
-      backgroundColor: SaluteColors.bgColor,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _AgendaAppBar(),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _MainTabBar(
-                selected: _view,
-                onSelected: (v) => setState(() {
-                  _view = v;
-                  _selecting = false;
-                  _selectedIds.clear();
-                }),
+        backgroundColor: SaluteColors.bgColor,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _AgendaAppBar(),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _MainTabBar(
+                  selected: _view,
+                  onSelected: (v) => setState(() {
+                    _view = v;
+                    _selecting = false;
+                    _selectedIds.clear();
+                  }),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: StreamBuilder<List<AgendaEvent>>(
-                stream: AgendaService.instance.watchAll(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          'No se pudo cargar la agenda.\n${snapshot.error}',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: SaluteColors.textMuted),
+              const SizedBox(height: 16),
+              Expanded(
+                child: StreamBuilder<List<AgendaEvent>>(
+                  stream: AgendaService.instance.watchAll(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            'No se pudo cargar la agenda.\n${snapshot.error}',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: SaluteColors.textMuted),
+                          ),
                         ),
-                      ),
-                    );
-                  }
-                  final allEvents = snapshot.data ?? const [];
-                  switch (_view) {
-                    case _MainView.todas:
-                      return _TodasView(
-                        events: _applyStatusFilter(allEvents),
-                        statusFilter: _statusFilter,
-                        statusLabels: _statusLabelsFilter,
-                        onStatusFilterChanged: (i) => setState(() => _statusFilter = i),
-                        onToggleStatus: _toggleStatus,
-                        onAdd: _openNewEventForActiveProfile,
-                        onOpen: _openDetails,
-                        selecting: _selecting,
-                        selectedIds: _selectedIds,
-                        onStartSelecting: _startSelecting,
-                        onExitSelecting: _exitSelecting,
-                        onToggleSelected: _toggleSelected,
-                        onToggleSelectAll: () => _toggleSelectAll(_applyStatusFilter(allEvents)),
-                        onDeleteSelected: _deleteSelected,
                       );
-                    case _MainView.mes:
-                      return _MesView(
-                        allEvents: allEvents,
-                        visibleMonth: _visibleMonth,
-                        selectedDay: _selectedDay,
-                        onPrevMonth: () => _shiftMonth(-1),
-                        onNextMonth: () => _shiftMonth(1),
-                        onDaySelected: _selectDay,
-                        dayEvents: _applyStatusFilter(
-                          allEvents.where((e) => _sameDay(e.date, _selectedDay)).toList(),
-                        ),
-                        onToggleStatus: _toggleStatus,
-                        onAdd: _openNewEventForActiveProfile,
-                        onOpen: _openDetails,
-                      );
-                    case _MainView.dia:
-                    // Sin filtro de estado en esta vista: se muestran
-                    // todos los eventos del día seleccionado.
-                      final dayEvents = allEvents
-                          .where((e) => _sameDay(e.date, _selectedDay))
-                          .toList()
-                        ..sort((a, b) => a.date.compareTo(b.date));
-                      return _DiaView(
-                        days: _dayWindow,
-                        selectedDay: _selectedDay,
-                        onDaySelected: _selectDay,
-                        onPrevWeek: () => _shiftDayWindow(-7),
-                        onNextWeek: () => _shiftDayWindow(7),
-                        onPickDate: _pickAnyDate,
-                        events: dayEvents,
-                        onToggleStatus: _toggleStatus,
-                        onAdd: _openNewEventForActiveProfile,
-                        onOpen: _openDetails,
-                      );
-                  }
-                },
+                    }
+                    final allEvents = snapshot.data ?? const [];
+                    switch (_view) {
+                      case _MainView.todas:
+                        return _TodasView(
+                          events: _applyStatusFilter(allEvents),
+                          statusFilter: _statusFilter,
+                          statusLabels: _statusLabelsFilter,
+                          onStatusFilterChanged: (i) => setState(() => _statusFilter = i),
+                          onToggleStatus: _toggleStatus,
+                          onAdd: _openNewEventForActiveProfile,
+                          onOpen: _openDetails,
+                          selecting: _selecting,
+                          selectedIds: _selectedIds,
+                          onStartSelecting: _startSelecting,
+                          onExitSelecting: _exitSelecting,
+                          onToggleSelected: _toggleSelected,
+                          onToggleSelectAll: () => _toggleSelectAll(_applyStatusFilter(allEvents)),
+                          onDeleteSelected: _deleteSelected,
+                        );
+                      case _MainView.mes:
+                        return _MesView(
+                          allEvents: allEvents,
+                          visibleMonth: _visibleMonth,
+                          selectedDay: _selectedDay,
+                          onPrevMonth: () => _shiftMonth(-1),
+                          onNextMonth: () => _shiftMonth(1),
+                          onDaySelected: _selectDay,
+                          dayEvents: _applyStatusFilter(
+                            allEvents.where((e) => _sameDay(e.date, _selectedDay)).toList(),
+                          ),
+                          onToggleStatus: _toggleStatus,
+                          onAdd: _openNewEventForActiveProfile,
+                          onOpen: _openDetails,
+                        );
+                      case _MainView.dia:
+                      // Sin filtro de estado en esta vista: se muestran
+                      // todos los eventos del día seleccionado.
+                        final dayEvents = allEvents
+                            .where((e) => _sameDay(e.date, _selectedDay))
+                            .toList()
+                          ..sort((a, b) => a.date.compareTo(b.date));
+                        return _DiaView(
+                          days: _dayWindow,
+                          selectedDay: _selectedDay,
+                          onDaySelected: _selectDay,
+                          onPrevWeek: () => _shiftDayWindow(-7),
+                          onNextWeek: () => _shiftDayWindow(7),
+                          onPickDate: _pickAnyDate,
+                          events: dayEvents,
+                          onToggleStatus: _toggleStatus,
+                          onAdd: _openNewEventForActiveProfile,
+                          onOpen: _openDetails,
+                        );
+                    }
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: _selecting
-          ? null
-          : FloatingActionButton(
-              tooltip: 'Nuevo evento',
-              backgroundColor: SaluteColors.primaryGreen,
-              onPressed: _openNewEventForActiveProfile,
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
+        floatingActionButton: _selecting
+            ? null
+            : FloatingActionButton(
+          tooltip: 'Nuevo evento',
+          backgroundColor: SaluteColors.primaryGreen,
+          onPressed: _openNewEventForActiveProfile,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
       ),
     );
   }
@@ -404,7 +404,7 @@ class _AgendaAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const AppHeader.secondary(title: 'Agenda');
+    return const DsScreenHeader(title: 'Agenda');
   }
 }
 
@@ -1095,103 +1095,103 @@ class _EventRow extends StatelessWidget {
         child: Container(
           color: selected ? SaluteColors.lightGreen.withValues(alpha: 0.35) : Colors.transparent,
           child: IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (selecting)
-            Padding(
-              padding: const EdgeInsets.only(left: 12),
-              child: Checkbox(
-                value: selected,
-                onChanged: (_) => onOpen(),
-                activeColor: SaluteColors.primaryGreen,
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-          SizedBox(
-            width: selecting ? 68 : 80,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(selecting ? 4 : 20, 20, 0, 20),
-              child: Text(
-                _time,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: done ? SaluteColors.textMuted : Colors.black87,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (selecting)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Checkbox(
+                      value: selected,
+                      onChanged: (_) => onOpen(),
+                      activeColor: SaluteColors.primaryGreen,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                SizedBox(
+                  width: selecting ? 68 : 80,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(selecting ? 4 : 20, 20, 0, 20),
+                    child: Text(
+                      _time,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: done ? SaluteColors.textMuted : Colors.black87,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
-          Container(width: 1.5, color: const Color(0xFFE8E8E8)),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
+                Container(width: 1.5, color: const Color(0xFFE8E8E8)),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          event.location.isNotEmpty ? event.location : event.profileName,
-                          style: TextStyle(fontSize: 13, color: SaluteColors.textMuted),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          event.title,
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
-                            decoration: done ? TextDecoration.lineThrough : null,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                event.location.isNotEmpty ? event.location : event.profileName,
+                                style: TextStyle(fontSize: 13, color: SaluteColors.textMuted),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                event.title,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black87,
+                                  decoration: done ? TextDecoration.lineThrough : null,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(Icons.person_outline, size: 14, color: SaluteColors.primaryGreen),
+                                  const SizedBox(width: 4),
+                                  Flexible(child: Text(
+                                    event.profileName,
+                                    style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
+                                  )),
+                                  if (event.reminderMinutesBefore != null) ...[
+                                    const SizedBox(width: 10),
+                                    Icon(Icons.alarm, size: 13, color: SaluteColors.terracotta),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              A11yTap(
+                                hint: 'Tocá para cambiar el estado',
+                                onTap: onToggleStatus,
+                                child: _StatusBadge(status: event.status),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
+                        const SizedBox(width: 8),
+                        Column(
                           children: [
-                            const Icon(Icons.person_outline, size: 14, color: SaluteColors.primaryGreen),
-                            const SizedBox(width: 4),
-                            Flexible(child: Text(
-                              event.profileName,
-                              style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
-                            )),
-                            if (event.reminderMinutesBefore != null) ...[
-                              const SizedBox(width: 10),
-                              Icon(Icons.alarm, size: 13, color: SaluteColors.terracotta),
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(color: SaluteColors.primaryGreen, shape: BoxShape.circle),
+                              child: Icon(_typeIcons[event.type] ?? Icons.event_note_outlined, color: Colors.white, size: 18),
+                            ),
+                            if (!selecting) ...[
+                              const SizedBox(height: 10),
+                              const Icon(Icons.visibility_outlined, size: 20, color: SaluteColors.primaryGreen),
                             ],
                           ],
-                        ),
-                        const SizedBox(height: 10),
-                        A11yTap(
-                          hint: 'Tocá para cambiar el estado',
-                          onTap: onToggleStatus,
-                          child: _StatusBadge(status: event.status),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Column(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(color: SaluteColors.primaryGreen, shape: BoxShape.circle),
-                        child: Icon(_typeIcons[event.type] ?? Icons.event_note_outlined, color: Colors.white, size: 18),
-                      ),
-                      if (!selecting) ...[
-                        const SizedBox(height: 10),
-                        const Icon(Icons.visibility_outlined, size: 20, color: SaluteColors.primaryGreen),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
           ),
         ),
       ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:saluteapp/components/app_header.dart';
+import 'package:saluteapp/components/design_patterns.dart';
 import 'package:saluteapp/components/design_system.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/family_profile.dart';
@@ -50,8 +50,9 @@ class TreatmentsScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            AppHeader.secondary(
+            DsScreenHeader(
               title: 'Tratamientos',
+              subtitle: profile.name,
               onBack: () => Navigator.of(context).pop(),
             ),
             Expanded(
@@ -65,7 +66,7 @@ class TreatmentsScreen extends StatelessWidget {
                   if (snapshot.hasError) {
                     return _Message(
                       text:
-                          'No se pudieron cargar los tratamientos.\n${snapshot.error}',
+                      'No se pudieron cargar los tratamientos.\n${snapshot.error}',
                     );
                   }
                   if (!snapshot.hasData) {
@@ -120,7 +121,7 @@ class TreatmentsScreen extends StatelessWidget {
                         const _EmptyCard()
                       else
                         ...active.map(
-                          (medication) => Padding(
+                              (medication) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _TreatmentCard(
                               medication: medication,
@@ -137,7 +138,7 @@ class TreatmentsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         ...history.map(
-                          (medication) => Padding(
+                              (medication) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _HistoryCard(
                               medication: medication,
@@ -195,7 +196,7 @@ class _Intro extends StatelessWidget {
         const SizedBox(height: 5),
         Text(
           'Cronograma terapéutico personalizado para $profileName, '
-          'sincronizado con el botiquín y las alertas.',
+              'sincronizado con el botiquín y las alertas.',
           style: TextStyle(
             color: Colors.grey.shade600,
             fontSize: 13,
@@ -248,14 +249,14 @@ class _SummaryCard extends StatelessWidget {
     final now = TimeOfDay.now();
     final current = now.hour * 60 + now.minute;
     final times =
-        medications
-            .expand((m) => m.timesOfDay)
-            .map(parseTimeOfDay)
-            .whereType<(int, int)>()
-            .map((t) => t.$1 * 60 + t.$2)
-            .where((minutes) => minutes >= current)
-            .toList()
-          ..sort();
+    medications
+        .expand((m) => m.timesOfDay)
+        .map(parseTimeOfDay)
+        .whereType<(int, int)>()
+        .map((t) => t.$1 * 60 + t.$2)
+        .where((minutes) => minutes >= current)
+        .toList()
+      ..sort();
     if (times.isEmpty) return null;
     final minutes = times.first;
     return '${(minutes ~/ 60).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';

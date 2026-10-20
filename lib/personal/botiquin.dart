@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:saluteapp/components/app_header.dart';
+import 'package:saluteapp/components/design_patterns.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/medicine_item.dart';
 import 'package:saluteapp/core/models/medication.dart';
@@ -161,7 +161,7 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            AppHeader.secondary(title: 'Mi Botiquín', onBack: widget.onBackToDashboard),
+            DsScreenHeader(title: 'Mi Botiquín', onBack: widget.onBackToDashboard),
             Expanded(
               child: StreamBuilder<List<MedicineItem>>(
                 stream: MedicineItemService.instance.watchAll(),
@@ -237,16 +237,16 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
                           )
                         else
                           ...filtered.map((m) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _MedicineCard(
-                                  medicine: m,
-                                  usage: _usageLabel(m, medicines),
-                                  onIncrement: () => _updateStock(m, 1),
-                                  onDecrement: () => _updateStock(m, -1),
-                                  onEdit: () => _showMedicineForm(medicine: m),
-                                  onDiscard: () => _discard(m),
-                                ),
-                              )),
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _MedicineCard(
+                              medicine: m,
+                              usage: _usageLabel(m, medicines),
+                              onIncrement: () => _updateStock(m, 1),
+                              onDecrement: () => _updateStock(m, -1),
+                              onEdit: () => _showMedicineForm(medicine: m),
+                              onDiscard: () => _discard(m),
+                            ),
+                          )),
                       ],
                     ),
                   );
@@ -274,15 +274,15 @@ class _FilterChips extends StatelessWidget {
       child: Row(
         children: ['Todos', 'Activos', 'Stock Bajo', 'Vencidos']
             .map((f) => Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(f, style: TextStyle(color: selected == f ? Colors.white : Colors.black87)),
-                    selected: selected == f,
-                    selectedColor: SaluteColors.primaryGreen,
-                    backgroundColor: Colors.grey.shade100,
-                    onSelected: (_) => onChanged(f),
-                  ),
-                ))
+          padding: const EdgeInsets.only(right: 8),
+          child: FilterChip(
+            label: Text(f, style: TextStyle(color: selected == f ? Colors.white : Colors.black87)),
+            selected: selected == f,
+            selectedColor: SaluteColors.primaryGreen,
+            backgroundColor: Colors.grey.shade100,
+            onSelected: (_) => onChanged(f),
+          ),
+        ))
             .toList(),
       ),
     );
@@ -546,7 +546,7 @@ class _UntrackedTreatments extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           ...treatments.map(
-            (t) => Padding(
+                (t) => Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Row(
                 children: [

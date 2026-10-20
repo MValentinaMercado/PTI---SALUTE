@@ -1,7 +1,55 @@
 import 'package:saluteapp/components/a11y_tap.dart';
+import 'package:saluteapp/components/app_header.dart';
 import 'package:flutter/material.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'design_system.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCREEN HEADER PATTERN
+// Encabezado único para todas las pantallas secundarias. Usa siempre
+// AppHeader.secondary (flecha atrás + título) y, opcionalmente, un subtítulo
+// (ej: nombre del perfil) con el mismo estilo en todas las pantallas.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class DsScreenHeader extends StatelessWidget {
+  final String title;
+
+  /// Línea secundaria bajo el título (ej: nombre del perfil activo).
+  final String? subtitle;
+  final VoidCallback? onBack;
+
+  const DsScreenHeader({
+    Key? key,
+    required this.title,
+    this.subtitle,
+    this.onBack,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppHeader.secondary(title: title, onBack: onBack),
+        if (subtitle != null && subtitle!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: DsSpacing.sm),
+            child: Text(
+              subtitle!,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: SaluteColors.textMuted,
+                fontSize: DsFontSize.xs,
+                fontWeight: DsFontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCREEN LAYOUT PATTERN
@@ -39,25 +87,25 @@ class DsScreenLayout extends StatelessWidget {
             Expanded(
               child: scrollable
                   ? SingleChildScrollView(
-                      padding: padding ??
-                          const EdgeInsets.fromLTRB(
-                            DsSpacing.lg,
-                            DsSpacing.lg,
-                            DsSpacing.lg,
-                            DsSpacing.xl,
-                          ),
-                      child: content,
-                    )
-                  : Padding(
-                      padding: padding ??
-                          const EdgeInsets.fromLTRB(
-                            DsSpacing.lg,
-                            DsSpacing.lg,
-                            DsSpacing.lg,
-                            DsSpacing.xl,
-                          ),
-                      child: content,
+                padding: padding ??
+                    const EdgeInsets.fromLTRB(
+                      DsSpacing.lg,
+                      DsSpacing.lg,
+                      DsSpacing.lg,
+                      DsSpacing.xl,
                     ),
+                child: content,
+              )
+                  : Padding(
+                padding: padding ??
+                    const EdgeInsets.fromLTRB(
+                      DsSpacing.lg,
+                      DsSpacing.lg,
+                      DsSpacing.lg,
+                      DsSpacing.xl,
+                    ),
+                child: content,
+              ),
             ),
           ],
         ),
@@ -170,7 +218,7 @@ class DsMetricCard extends StatelessWidget {
             icon: icon,
             iconColor: iconColor ?? SaluteColors.primaryGreen,
             backgroundColor:
-                backgroundColor ?? SaluteColors.lightGreen.withValues(alpha: 0.3),
+            backgroundColor ?? SaluteColors.lightGreen.withValues(alpha: 0.3),
           ),
           const SizedBox(width: DsSpacing.lg),
           Expanded(
@@ -602,4 +650,3 @@ class DsHeroSection extends StatelessWidget {
     );
   }
 }
-
