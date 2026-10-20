@@ -1,3 +1,4 @@
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -45,6 +46,13 @@ const _monthAbbr = [
   'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
 ];
 
+/// Etiqueta de especialidad de una orden: la que se eligió/escribió al
+/// crearla; para órdenes viejas, la de su categoría.
+String _specialtyLabel(MedicalRecord r) {
+  final s = (r.details['specialty'] as String?)?.trim() ?? '';
+  return s.isNotEmpty ? s : (_categoryLabels[r.category] ?? 'Otro');
+}
+
 String _fmtDate(DateTime d) => '${d.day.toString().padLeft(2, '0')} ${_monthAbbr[d.month - 1]}';
 
 /// Una orden con el nombre del perfil dueño ya resuelto (MedicalRecord no
@@ -54,7 +62,20 @@ class _OrderEntry {
   final MedicalRecord record;
   final String profileId;
   final String profileName;
-  const _OrderEntry({required this.record, required this.profileId, required this.profileName});
+
+  /// Mascota (para ofrecer especialidades veterinarias al editar).
+  final bool isPet;
+
+  /// Las reglas de Firestore solo dejan modificar el historial de perfiles
+  /// que administrás; en los compartidos solo se puede leer.
+  final bool canEdit;
+  const _OrderEntry({
+    required this.record,
+    required this.profileId,
+    required this.profileName,
+    this.isPet = false,
+    this.canEdit = false,
+  });
 }
 
 /// Recorre los perfiles de la familia y trae, de cada uno, las entradas
@@ -88,7 +109,13 @@ Future<List<_OrderEntry>> _fetchOrders({FamilyProfile? only}) async {
       final records = await MedicalRecordService.instance.fetchRecords(profile.id, limit: 100);
       for (final r in records) {
         if (_orderCategories.contains(r.category)) {
-          entries.add(_OrderEntry(record: r, profileId: profile.id, profileName: profile.name));
+          entries.add(_OrderEntry(
+            record: r,
+            profileId: profile.id,
+            profileName: profile.name,
+            isPet: profile.type == ProfileType.mascota,
+            canEdit: profile.ownerUid == myUid,
+          ));
         }
       }
     } on FirebaseException catch (e) {
@@ -164,6 +191,7 @@ class _OrdenScreenState extends State<OrdenScreen> {
         return r.title.toLowerCase().contains(_query) ||
             r.professional.toLowerCase().contains(_query) ||
             r.institution.toLowerCase().contains(_query) ||
+            _specialtyLabel(r).toLowerCase().contains(_query) ||
             o.profileName.toLowerCase().contains(_query);
       }).toList();
     }
@@ -221,7 +249,7 @@ class _OrdenScreenState extends State<OrdenScreen> {
     if (target == null || !mounted) return;
     final saved = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => OrderFormScreen(profileId: target!.id, profileName: target.name)),
+      MaterialPageRoute(builder: (_) => OrderFormScreen.forProfile(target!)),
     );
     if (saved == true) _load();
   }
@@ -271,6 +299,64 @@ class _OrdenScreenState extends State<OrdenScreen> {
     }
   }
 
+  Future<void> _editOrder(_OrderEntry entry) async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OrderFormScreen(
+          profileId: entry.profileId,
+          profileName: entry.profileName,
+          isPet: entry.isPet,
+          existing: entry.record,
+        ),
+      ),
+    );
+    if (saved == true && mounted) {
+      _load();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Orden actualizada.')));
+    }
+  }
+
+  Future<void> _deleteOrder(_OrderEntry entry) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Eliminar esta orden?'),
+        content: Text(
+          '"${entry.record.title}" se va a borrar'
+          '${OrderAttachment.fromDetails(entry.record.details) != null ? ', junto con su archivo adjunto' : ''}. '
+          'Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFB03A3A)),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await MedicalRecordService.instance.deleteRecord(entry.profileId, entry.record.id);
+      final att = OrderAttachment.fromDetails(entry.record.details);
+      if (att != null) {
+        try {
+          await AttachmentService.instance.delete(att.path);
+        } catch (_) {
+          // El archivo vive solo en este dispositivo; si no está, no pasa nada.
+        }
+      }
+      if (!mounted) return;
+      _load();
+      messenger.showSnackBar(const SnackBar(content: Text('Orden eliminada.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('No se pudo eliminar la orden: $e')));
+    }
+  }
+
   void _showDetails(_OrderEntry entry) {
     final r = entry.record;
     final attachment = OrderAttachment.fromDetails(r.details);
@@ -279,7 +365,7 @@ class _OrdenScreenState extends State<OrdenScreen> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -289,7 +375,7 @@ class _OrdenScreenState extends State<OrdenScreen> {
               children: [
                 Text(r.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
-                Text(_categoryLabels[r.category] ?? 'Otro', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                Text(_specialtyLabel(r), style: TextStyle(color: SaluteColors.textMuted, fontSize: 13)),
                 const SizedBox(height: 16),
                 _DetailRow(icon: Icons.person_outline, label: 'Perfil', value: entry.profileName),
                 if (r.professional.isNotEmpty)
@@ -306,7 +392,7 @@ class _OrdenScreenState extends State<OrdenScreen> {
                 if (attachment == null)
                   const Text(
                     'Sin archivo adjunto.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+                    style: TextStyle(fontSize: 12, color: SaluteColors.textMuted, fontStyle: FontStyle.italic),
                   )
                 else ...[
                   _DetailRow(
@@ -348,6 +434,45 @@ class _OrdenScreenState extends State<OrdenScreen> {
                     ],
                   ),
                 ],
+                if (entry.canEdit) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            Navigator.pop(sheetContext);
+                            _editOrder(entry);
+                          },
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Editar', style: TextStyle(fontWeight: FontWeight.w800)),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: SaluteColors.primaryGreen,
+                            minimumSize: const Size.fromHeight(48),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(sheetContext);
+                            _deleteOrder(entry);
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                          label: const Text('Eliminar', style: TextStyle(fontWeight: FontWeight.w800)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFB03A3A),
+                            minimumSize: const Size.fromHeight(48),
+                            side: BorderSide(color: const Color(0xFFB03A3A).withValues(alpha: 0.5)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -361,6 +486,7 @@ class _OrdenScreenState extends State<OrdenScreen> {
     return Scaffold(
       backgroundColor: SaluteColors.bgColor,
       floatingActionButton: FloatingActionButton(
+        tooltip: 'Nueva orden',
         onPressed: _openNewOrder,
         backgroundColor: SaluteColors.primaryGreen,
         child: const Icon(Icons.add, color: Colors.white),
@@ -440,7 +566,7 @@ class _DetailRow extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: SaluteColors.primaryGreen),
           const SizedBox(width: 10),
-          Text('$label: ', style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w600)),
+          Text('$label: ', style: TextStyle(fontSize: 13, color: SaluteColors.textMuted, fontWeight: FontWeight.w600)),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
         ],
       ),
@@ -483,11 +609,11 @@ class _EmptyState extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 48),
       child: Column(
         children: [
-          Icon(Icons.folder_open_outlined, size: 40, color: Colors.grey[400]),
+          Icon(Icons.folder_open_outlined, size: 40, color: SaluteColors.textMuted),
           const SizedBox(height: 12),
           Text(
             hasAny ? 'Ninguna orden coincide con el filtro.' : 'Todavía no cargaste ninguna orden médica.',
-            style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
+            style: TextStyle(color: SaluteColors.textMuted, fontWeight: FontWeight.w600),
             textAlign: TextAlign.center,
           ),
         ],
@@ -517,8 +643,8 @@ class _SearchBar extends StatelessWidget {
         style: const TextStyle(fontSize: 14, color: Colors.black87),
         decoration: InputDecoration(
           hintText: 'Buscar estudio, médico o institución...',
-          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-          prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
+          hintStyle: TextStyle(color: SaluteColors.textMuted, fontSize: 13),
+          prefixIcon: Icon(Icons.search, color: SaluteColors.textMuted, size: 20),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide.none,
@@ -578,7 +704,7 @@ class _StatsRow extends StatelessWidget {
           Text(
             title,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
               color: txt.withValues(alpha: 0.7),
             ),
@@ -622,8 +748,10 @@ class _FilterChips extends StatelessWidget {
           final selected = i == selectedIndex;
           return Padding(
             padding: EdgeInsets.only(right: i < filters.length - 1 ? 10 : 0),
-            child: GestureDetector(
+            child: A11yTap(
               onTap: () => onSelected(i),
+              label: filters[i],
+              selected: selected,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(
@@ -758,8 +886,10 @@ class _OrderCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       // Badge de estado, tocable: alterna pendiente ⇄ completado
-                      GestureDetector(
+                      A11yTap(
                         onTap: onToggleStatus,
+                        label: isPending ? 'Estado: pendiente' : 'Estado: completo',
+                        hint: isPending ? 'Tocar para marcar como completo' : 'Tocar para marcar como pendiente',
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
@@ -775,8 +905,8 @@ class _OrderCard extends StatelessWidget {
                           child: Text(
                             isPending ? 'PENDIENTE' : 'COMPLETO',
                             style: TextStyle(
-                              color: isPending ? SaluteColors.brownOrange : SaluteColors.darkGreen,
-                              fontSize: 10,
+                              color: isPending ? SaluteColors.terracotta : SaluteColors.primaryGreen,
+                              fontSize: 12,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.3,
                             ),
@@ -789,12 +919,12 @@ class _OrderCard extends StatelessWidget {
                     const SizedBox(height: 14),
                     Row(
                       children: [
-                        Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+                        Icon(Icons.location_on_outlined, size: 14, color: SaluteColors.textMuted),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             order.institution,
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
+                            style: TextStyle(fontSize: 12, color: SaluteColors.textMuted, fontWeight: FontWeight.w500),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -808,10 +938,10 @@ class _OrderCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        _categoryLabels[order.category] ?? 'Otro',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
+                      Flexible(child: Text(
+                        _specialtyLabel(order),
+                        style: TextStyle(color: SaluteColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                      )),
                       Row(
                         children: [
                           _ActionButton(icon: Icons.remove_red_eye_outlined, tooltip: 'Ver detalles', onTap: onTap),

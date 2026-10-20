@@ -1,6 +1,6 @@
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:saluteapp/components/design_system.dart';
 import 'package:saluteapp/components/app_header.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/family_profile.dart';
@@ -38,8 +38,7 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
   bool get _isPet => _profile.type == ProfileType.mascota;
 
   /// Solo quien administra el perfil escribe (ver reglas de `vacunas`).
-  bool get _canEdit =>
-      _profile.ownerUid == FirebaseAuth.instance.currentUser?.uid;
+  bool get _canEdit => _profile.ownerUid == FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
@@ -75,8 +74,7 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
   Future<void> _openScan(List<VaccineRecord> all) async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) =>
-            VaccineScanScreen(profile: _profile, existingRecords: all),
+        builder: (_) => VaccineScanScreen(profile: _profile, existingRecords: all),
       ),
     );
     if (saved == true) _reload();
@@ -85,9 +83,7 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
   void _showAddSheet(List<VaccineRecord> all) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
@@ -95,27 +91,16 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Agregar al carné',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
+              const Text('Agregar al carné', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const CircleAvatar(
                   backgroundColor: SaluteColors.lightGreen,
-                  child: Icon(
-                    Icons.document_scanner_outlined,
-                    color: SaluteColors.primaryGreen,
-                  ),
+                  child: Icon(Icons.document_scanner_outlined, color: SaluteColors.primaryGreen),
                 ),
-                title: const Text(
-                  'Escanear certificado',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text(
-                  'Foto de la libreta: leemos las vacunas y vos las revisás.',
-                ),
+                title: const Text('Escanear certificado', style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('Foto de la libreta: leemos las vacunas y vos las revisás.'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _openScan(all);
@@ -125,15 +110,9 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
                 contentPadding: EdgeInsets.zero,
                 leading: const CircleAvatar(
                   backgroundColor: SaluteColors.lightGreen,
-                  child: Icon(
-                    Icons.edit_outlined,
-                    color: SaluteColors.primaryGreen,
-                  ),
+                  child: Icon(Icons.edit_outlined, color: SaluteColors.primaryGreen),
                 ),
-                title: const Text(
-                  'Cargar a mano',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
+                title: const Text('Cargar a mano', style: TextStyle(fontWeight: FontWeight.w700)),
                 subtitle: const Text('Una dosis por vez.'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
@@ -158,13 +137,10 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
           'Esta acción no se puede deshacer.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+            child: const Text('Eliminar', style: TextStyle(color: SaluteColors.danger)),
           ),
         ],
       ),
@@ -183,30 +159,22 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
     if (att == null) return;
     final ok = await AttachmentService.instance.open(att);
     if (!ok && mounted) {
-      _msg(
-        'No se pudo abrir el archivo. Puede haberse cargado desde otro dispositivo.',
-      );
+      _msg('No se pudo abrir el archivo. Puede haberse cargado desde otro dispositivo.');
     }
   }
 
   Future<void> _shareAttachment(VaccineRecord r) async {
     final att = r.attachment;
     if (att == null) return;
-    final ok = await AttachmentService.instance.share(
-      att,
-      text: 'Vacuna ${r.name} · ${_profile.name}',
-    );
-    if (!ok && mounted)
-      _msg('El archivo no está disponible en este dispositivo.');
+    final ok = await AttachmentService.instance.share(att, text: 'Vacuna ${r.name} · ${_profile.name}');
+    if (!ok && mounted) _msg('El archivo no está disponible en este dispositivo.');
   }
 
   void _showDetails(VaccineRecord r, List<VaccineRecord> all) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheetContext) => SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -214,46 +182,26 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                r.name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              Text(r.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
               Text(
                 r.source == VaccineSource.ocr
                     ? 'Leída del certificado y confirmada'
                     : 'Cargada a mano',
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                style: TextStyle(color: SaluteColors.textMuted, fontSize: 13),
               ),
               const SizedBox(height: 16),
-              _DetailRow(
-                icon: Icons.event_available_outlined,
-                label: 'Aplicada',
-                value: fmtVaccineDate(r.date),
-              ),
+              _DetailRow(icon: Icons.event_available_outlined, label: 'Aplicada', value: fmtVaccineDate(r.date)),
               if (r.nextDoseDate != null)
-                _DetailRow(
-                  icon: Icons.event_repeat_outlined,
-                  label: 'Próxima dosis',
-                  value: fmtVaccineDate(r.nextDoseDate!),
-                ),
+                _DetailRow(icon: Icons.event_repeat_outlined, label: 'Próxima dosis', value: fmtVaccineDate(r.nextDoseDate!)),
               if (r.professional.isNotEmpty)
                 _DetailRow(
                   icon: Icons.medical_services_outlined,
                   label: _isPet ? 'Veterinario' : 'Profesional',
                   value: r.professional,
                 ),
-              if (r.lot.isNotEmpty)
-                _DetailRow(icon: Icons.tag, label: 'Lote', value: r.lot),
-              if (r.notes.isNotEmpty)
-                _DetailRow(
-                  icon: Icons.notes_outlined,
-                  label: 'Notas',
-                  value: r.notes,
-                ),
+              if (r.lot.isNotEmpty) _DetailRow(icon: Icons.tag, label: 'Lote', value: r.lot),
+              if (r.notes.isNotEmpty) _DetailRow(icon: Icons.notes_outlined, label: 'Notas', value: r.notes),
               if (r.attachment != null) ...[
                 const SizedBox(height: 8),
                 Row(
@@ -301,9 +249,7 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
                           Navigator.of(sheetContext).pop();
                           _delete(r);
                         },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                        ),
+                        style: OutlinedButton.styleFrom(foregroundColor: SaluteColors.danger),
                         icon: const Icon(Icons.delete_outline, size: 18),
                         label: const Text('Eliminar'),
                       ),
@@ -322,24 +268,17 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
   void _showSlotInfo(VaccineSlot slot) {
     final t = slot.template;
     if (t == null) return;
-    final doses =
-        t.doseMonthsFor?.call(_profile.birthDate, DateTime.now()) ??
-        t.doseMonths;
+    final doses = t.doseMonthsFor?.call(_profile.birthDate, DateTime.now()) ?? t.doseMonths;
     final repeat = t.repeatEveryDays;
     String? schedule;
     if (doses.isNotEmpty) {
-      schedule =
-          'Dosis: ${doses.map(PersonVaccines.doseAgeLabel).join(' · ')}.';
+      schedule = 'Dosis: ${doses.map(PersonVaccines.doseAgeLabel).join(' · ')}.';
     } else if (repeat != null) {
-      schedule = repeat >= 3650
-          ? 'Refuerzo cada 10 años.'
-          : 'Refuerzo todos los años.';
+      schedule = repeat >= 3650 ? 'Refuerzo cada 10 años.' : 'Refuerzo todos los años.';
     }
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -347,40 +286,24 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                t.name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              Text(t.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 10),
               Text(t.covers, style: const TextStyle(fontSize: 14, height: 1.4)),
               if (schedule != null) ...[
                 const SizedBox(height: 10),
-                Text(
-                  schedule,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                Text(schedule, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
               ],
               if (t.optional) ...[
                 const SizedBox(height: 10),
                 Text(
                   'Es opcional o depende del riesgo: solo figura como faltante si la cargás.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
                 ),
               ],
               const SizedBox(height: 14),
               Text(
                 'Guía orientativa del Calendario Nacional. Tu médico indica qué corresponde en cada caso.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  height: 1.35,
-                ),
+                style: TextStyle(fontSize: 12, color: SaluteColors.textMuted, height: 1.35),
               ),
             ],
           ),
@@ -408,10 +331,7 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
         final name = hasSuggestion && (!_isPet || slot.latest == null)
             ? slot.template!.suggestions.first
             : (slot.latest?.name ?? slot.name);
-        _openForm(
-          draft: VaccineDraft(name: name),
-          all: all,
-        );
+        _openForm(draft: VaccineDraft(name: name), all: all);
     }
   }
 
@@ -428,11 +348,7 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
                 future: _future,
                 builder: (context, snap) {
                   if (snap.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: SaluteColors.primaryGreen,
-                      ),
-                    );
+                    return const Center(child: CircularProgressIndicator(color: SaluteColors.primaryGreen));
                   }
                   if (snap.hasError) {
                     return Center(
@@ -441,21 +357,11 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.error_outline,
-                              color: SaluteColors.terracotta,
-                              size: 36,
-                            ),
+                            const Icon(Icons.error_outline, color: SaluteColors.terracotta, size: 36),
                             const SizedBox(height: 12),
-                            Text(
-                              'No se pudo cargar el carné.\n${snap.error}',
-                              textAlign: TextAlign.center,
-                            ),
+                            Text('No se pudo cargar el carné.\n${snap.error}', textAlign: TextAlign.center),
                             const SizedBox(height: 12),
-                            ElevatedButton(
-                              onPressed: _reload,
-                              child: const Text('Reintentar'),
-                            ),
+                            ElevatedButton(onPressed: _reload, child: const Text('Reintentar')),
                           ],
                         ),
                       ),
@@ -473,18 +379,10 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
           : FutureBuilder<List<VaccineRecord>>(
               future: _future,
               builder: (context, snap) => FloatingActionButton.extended(
-                onPressed: snap.hasData
-                    ? () => _showAddSheet(snap.data!)
-                    : null,
+                onPressed: snap.hasData ? () => _showAddSheet(snap.data!) : null,
                 backgroundColor: SaluteColors.primaryGreen,
                 icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text(
-                  'Agregar',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                label: const Text('Agregar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               ),
             ),
     );
@@ -504,26 +402,18 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
       schemeHelp = species == PetSpecies.otro
           ? 'Para esta especie no hay un esquema sugerido: cargá las vacunas que te indique el veterinario.'
           : 'Esquema orientativo para ${species == PetSpecies.perro ? 'perros' : 'gatos'}. '
-                'Tu veterinario define qué dosis y cuándo, según la edad y el riesgo de ${_profile.name}.';
+              'Tu veterinario define qué dosis y cuándo, según la edad y el riesgo de ${_profile.name}.';
     } else {
       slots = PersonVaccines.evaluate(birthDate: birth, records: records);
-      schemeHelp =
-          'Basado en el Calendario Nacional de Vacunación de Argentina (2026). Es orientativo: '
+      schemeHelp = 'Basado en el Calendario Nacional de Vacunación de Argentina (2026). Es orientativo: '
           'tu médico o pediatra indica qué corresponde según los antecedentes, el embarazo, '
           'los factores de riesgo y la zona donde vive ${_profile.name}.';
     }
     int count(VaccineStatus s) => slots.where((x) => x.status == s).length;
 
-    final ageMonths = birth == null
-        ? null
-        : PersonVaccines.monthsBetween(birth, DateTime.now());
-    final showPregnancyNote =
-        !_isPet && ageMonths != null && ageMonths >= 144 && ageMonths <= 600;
-    final helpStyle = TextStyle(
-      fontSize: 12,
-      color: Colors.grey[600],
-      height: 1.35,
-    );
+    final ageMonths = birth == null ? null : PersonVaccines.monthsBetween(birth, DateTime.now());
+    final showPregnancyNote = !_isPet && ageMonths != null && ageMonths >= 144 && ageMonths <= 600;
+    final helpStyle = TextStyle(fontSize: 12, color: SaluteColors.textMuted, height: 1.35);
 
     return RefreshIndicator(
       color: SaluteColors.primaryGreen,
@@ -536,35 +426,22 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
           if (!_isPet && birth == null) ...[
             _Notice(
               icon: Icons.cake_outlined,
-              text:
-                  'Falta la fecha de nacimiento de ${_profile.name}. Cargala en su perfil para ver '
+              text: 'Falta la fecha de nacimiento de ${_profile.name}. Cargala en su perfil para ver '
                   'qué vacunas corresponden por edad. Mientras tanto se muestran solo las dosis cargadas.',
             ),
             const SizedBox(height: 16),
           ],
           Row(
             children: [
-              _CountBox(
-                label: 'PRÓXIMAS',
-                value: count(VaccineStatus.proxima),
-                color: SaluteColors.darkGreen,
-              ),
+              _CountBox(label: 'PRÓXIMAS', value: count(VaccineStatus.proxima), color: SaluteColors.darkGreen),
               const SizedBox(width: 10),
-              _CountBox(
-                label: 'PENDIENTES',
-                value: count(VaccineStatus.pendiente),
-                color: SaluteColors.brownOrange,
-              ),
+              _CountBox(label: 'PENDIENTES', value: count(VaccineStatus.pendiente), color: SaluteColors.brownOrange),
               const SizedBox(width: 10),
-              _CountBox(
-                label: 'SIN REGISTRO',
-                value: count(VaccineStatus.sinRegistro),
-                color: Colors.grey.shade600,
-              ),
+              _CountBox(label: 'SIN REGISTRO', value: count(VaccineStatus.sinRegistro), color: SaluteColors.textMuted),
             ],
           ),
           const SizedBox(height: 22),
-          const DsSectionTitle(title: 'Esquema'),
+          const _SectionLabel('Esquema'),
           const SizedBox(height: 4),
           Text(schemeHelp, style: helpStyle),
           if (showPregnancyNote) ...[
@@ -584,14 +461,12 @@ class _VaccineCardScreenState extends State<VaccineCardScreen> {
                 slot: s,
                 isPet: _isPet,
                 onTap: _canEdit ? () => _onSlotTap(s, records) : null,
-                onInfo: !_isPet && s.template != null
-                    ? () => _showSlotInfo(s)
-                    : null,
+                onInfo: !_isPet && s.template != null ? () => _showSlotInfo(s) : null,
               ),
               const SizedBox(height: 10),
             ],
           const SizedBox(height: 14),
-          const DsSectionTitle(title: 'Historial'),
+          const _SectionLabel('Historial'),
           const SizedBox(height: 12),
           if (records.isEmpty)
             const _Empty(text: 'Acá van a aparecer las dosis aplicadas.')
@@ -623,39 +498,22 @@ class _ProfileHeader extends StatelessWidget {
           ].join(' · ')
         : [
             if (birth != null) PersonVaccines.ageLabel(birth, DateTime.now()),
-            if (!profile.isSelf && profile.relation.isNotEmpty)
-              profile.relation,
+            if (!profile.isSelf && profile.relation.isNotEmpty) profile.relation,
           ].join(' · ');
     return Row(
       children: [
         CircleAvatar(
           radius: 24,
-          backgroundColor: isPet
-              ? SaluteColors.terracotta
-              : SaluteColors.darkGreen,
-          child: Icon(
-            isPet ? Icons.pets_outlined : Icons.person_outline,
-            color: Colors.white,
-            size: 22,
-          ),
+          backgroundColor: isPet ? SaluteColors.terracotta : SaluteColors.darkGreen,
+          child: Icon(isPet ? Icons.pets_outlined : Icons.person_outline, color: Colors.white, size: 22),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                profile.name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
-                ),
-              ),
-              if (sub.isNotEmpty)
-                Text(
-                  sub,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                ),
+              Text(profile.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+              if (sub.isNotEmpty) Text(sub, style: TextStyle(fontSize: 13, color: SaluteColors.textMuted)),
             ],
           ),
         ),
@@ -676,21 +534,14 @@ class _Notice extends StatelessWidget {
       decoration: BoxDecoration(
         color: SaluteColors.brownOrange.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: SaluteColors.brownOrange.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: SaluteColors.brownOrange.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: SaluteColors.brownOrange),
           const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 12.5, height: 1.35),
-            ),
-          ),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 12.5, height: 1.35))),
         ],
       ),
     );
@@ -701,11 +552,7 @@ class _CountBox extends StatelessWidget {
   final String label;
   final int value;
   final Color color;
-  const _CountBox({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const _CountBox({required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -720,28 +567,25 @@ class _CountBox extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: Colors.grey[600],
-              ),
-            ),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: SaluteColors.textMuted)),
             const SizedBox(height: 6),
-            Text(
-              '$value',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-                color: color,
-              ),
-            ),
+            Text('$value', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: color)),
           ],
         ),
       ),
     );
   }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) => Text(
+        text.toUpperCase(),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SaluteColors.textMuted, letterSpacing: 0.6),
+      );
 }
 
 class _Empty extends StatelessWidget {
@@ -750,14 +594,11 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 18),
-    child: Center(
-      child: Text(
-        text,
-        style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
-      ),
-    ),
-  );
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Center(
+          child: Text(text, style: TextStyle(color: SaluteColors.textMuted, fontWeight: FontWeight.w600)),
+        ),
+      );
 }
 
 class _SlotTile extends StatelessWidget {
@@ -767,12 +608,7 @@ class _SlotTile extends StatelessWidget {
 
   /// Abre "qué cubre esta vacuna" (solo personas).
   final VoidCallback? onInfo;
-  const _SlotTile({
-    required this.slot,
-    required this.isPet,
-    this.onTap,
-    this.onInfo,
-  });
+  const _SlotTile({required this.slot, required this.isPet, this.onTap, this.onInfo});
 
   String _petSubtitle() {
     final r = slot.latest;
@@ -811,8 +647,7 @@ class _SlotTile extends StatelessWidget {
         if (due == null && r?.nextDoseDate != null) {
           return 'Se indicó para el ${fmtVaccineDate(r!.nextDoseDate!)}. Todavía no hay una dosis nueva registrada.';
         }
-        if (due == null)
-          return '${progress}Según el calendario corresponde una dosis más.';
+        if (due == null) return '${progress}Según el calendario corresponde una dosis más.';
         return recurring
             ? 'Refuerzo vencido desde el ${fmtVaccineDate(due)}.'
             : '${progress}Según el calendario ya corresponde la siguiente dosis (desde el ${fmtVaccineDate(due)}).';
@@ -823,12 +658,8 @@ class _SlotTile extends StatelessWidget {
             : '${progress}Próxima dosis: ${fmtVaccineDate(next)}.';
       case VaccineStatus.aplicada:
         final complete = total > 0 && slot.dosesDone >= total;
-        final last = r == null
-            ? ''
-            : 'Última dosis: ${fmtVaccineDate(r.date)}.';
-        final nextBoost = recurring && due != null
-            ? ' Próximo refuerzo: ${fmtVaccineDate(due)}.'
-            : '';
+        final last = r == null ? '' : 'Última dosis: ${fmtVaccineDate(r.date)}.';
+        final nextBoost = recurring && due != null ? ' Próximo refuerzo: ${fmtVaccineDate(due)}.' : '';
         return '${complete ? 'Esquema completo. ' : progress}$last$nextBoost';
     }
   }
@@ -853,11 +684,7 @@ class _SlotTile extends StatelessWidget {
                 color: vaccineStatusColor(slot.status).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                Icons.vaccines_outlined,
-                color: vaccineStatusColor(slot.status),
-                size: 22,
-              ),
+              child: Icon(Icons.vaccines_outlined, color: vaccineStatusColor(slot.status), size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -867,25 +694,15 @@ class _SlotTile extends StatelessWidget {
                   Row(
                     children: [
                       Flexible(
-                        child: Text(
-                          slot.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                          ),
-                        ),
+                        child: Text(slot.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                       ),
                       if (onInfo != null)
-                        GestureDetector(
+                        A11yTap(
+                          label: 'Más información sobre ${slot.name}',
                           onTap: onInfo,
-                          behavior: HitTestBehavior.opaque,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 6),
-                            child: Icon(
-                              Icons.info_outline,
-                              size: 16,
-                              color: Colors.grey[500],
-                            ),
+                            child: Icon(Icons.info_outline, size: 16, color: SaluteColors.textMuted),
                           ),
                         ),
                     ],
@@ -893,17 +710,18 @@ class _SlotTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     isPet ? _petSubtitle() : _personSubtitle(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[700],
-                      height: 1.3,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.3),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            VaccineStatusChip(slot.status),
+            // Tope de ancho: con textos grandes el chip baja de línea en vez de
+            // empujar el nombre fuera de la tarjeta.
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.36),
+              child: VaccineStatusChip(slot.status),
+            ),
           ],
         ),
       ),
@@ -934,19 +752,12 @@ class _RecordTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    r.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                    ),
-                  ),
+                  Text(r.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(height: 3),
                   Text(
                     [
                       fmtVaccineDate(r.date),
-                      if (r.nextDoseDate != null)
-                        'próxima ${fmtVaccineDate(r.nextDoseDate!)}',
+                      if (r.nextDoseDate != null) 'próxima ${fmtVaccineDate(r.nextDoseDate!)}',
                       if (r.professional.isNotEmpty) r.professional,
                     ].join(' · '),
                     style: TextStyle(fontSize: 12, color: Colors.grey[700]),
@@ -957,13 +768,9 @@ class _RecordTile extends StatelessWidget {
             if (r.attachment != null)
               const Padding(
                 padding: EdgeInsets.only(right: 6),
-                child: Icon(
-                  Icons.attach_file_rounded,
-                  size: 18,
-                  color: SaluteColors.primaryGreen,
-                ),
+                child: Icon(Icons.attach_file_rounded, size: 18, color: SaluteColors.primaryGreen),
               ),
-            Icon(Icons.chevron_right, color: Colors.grey[400]),
+            Icon(Icons.chevron_right, color: SaluteColors.textMuted),
           ],
         ),
       ),
@@ -975,11 +782,7 @@ class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  const _DetailRow({required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -990,20 +793,8 @@ class _DetailRow extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: SaluteColors.primaryGreen),
           const SizedBox(width: 10),
-          Text(
-            '$label: ',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-          ),
+          Text('$label: ', style: TextStyle(fontSize: 13, color: SaluteColors.textMuted, fontWeight: FontWeight.w600)),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
         ],
       ),
     );

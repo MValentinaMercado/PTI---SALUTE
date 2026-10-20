@@ -1,3 +1,5 @@
+import 'package:saluteapp/components/text_scale.dart';
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:flutter/material.dart';
 import 'package:saluteapp/components/app_header.dart';
 import 'package:saluteapp/components/medication_today_card.dart';
@@ -17,6 +19,7 @@ import 'package:saluteapp/profile/family_list_screen.dart';
 import 'package:saluteapp/profile/live_profile_screen.dart';
 import 'package:saluteapp/profile/profile_form_screen.dart';
 import 'package:saluteapp/profile/notifications_screen.dart';
+import 'package:saluteapp/sos/sos_button.dart' show SosDashboardSlot;
 
 /// Nombre de respaldo para el saludo, mientras se carga el perfil propio
 /// (ver `_HealthCard`, que usa `ProfileService.watchSelfProfile()` como
@@ -63,7 +66,9 @@ class _SaluteHomeScreenState extends State<SaluteHomeScreen> with WidgetsBinding
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SaluteColors.bgColor,
-      body: SafeArea(
+      body: Stack(
+        children: [
+      SafeArea(
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,6 +123,10 @@ class _SaluteHomeScreenState extends State<SaluteHomeScreen> with WidgetsBinding
             ],
           ),
         ),
+      ),
+      // SOS fijo en el Inicio (solo si está activado en Configuración).
+      const SosDashboardSlot(),
+        ],
       ),
     );
   }
@@ -282,16 +291,19 @@ class _FamilySection extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'MI FAMILIA',
-                  style: TextStyle(
-                    fontSize: DsFontSize.base,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[600],
-                    letterSpacing: 1.2,
+                Expanded(
+                  child: Text(
+                    'MI FAMILIA',
+                    style: TextStyle(
+                      fontSize: DsFontSize.base,
+                      fontWeight: FontWeight.w600,
+                      color: SaluteColors.textMuted,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ),
-                GestureDetector(
+                A11yTap(
+                  label: family != null ? 'Ver todos los familiares' : 'Crear familia',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => FamilyListScreen(
@@ -304,7 +316,7 @@ class _FamilySection extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: DsFontSize.md,
                       fontWeight: FontWeight.w600,
-                      color: SaluteColors.brownOrange,
+                      color: SaluteColors.terracotta,
                     ),
                   ),
                 ),
@@ -312,16 +324,20 @@ class _FamilySection extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             SizedBox(
-              height: 64,
+              height: scaledHeight(context, 64),
               child: StreamBuilder<List<FamilyProfile>>(
                 stream: ProfileService.instance.watchProfiles(),
                 builder: (context, snapshot) {
                   final profiles = snapshot.data ?? [];
-                  return Row(
+                  // Scroll horizontal: con muchos perfiles la fila ya no desborda.
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
                     children: [
                       ...profiles.map((profile) => Padding(
                         padding: const EdgeInsets.only(right: 12),
-                        child: GestureDetector(
+                        child: A11yTap(
+                          label: 'Ver perfil de ${profile.name}',
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
@@ -344,7 +360,8 @@ class _FamilySection extends StatelessWidget {
                           ),
                         ),
                       )),
-                      GestureDetector(
+                      A11yTap(
+                        label: 'Agregar un perfil',
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const ProfileFormScreen()),
@@ -353,11 +370,11 @@ class _FamilySection extends StatelessWidget {
                         child: CircleAvatar(
                           radius: 26,
                           backgroundColor: Colors.grey[200],
-                          child: Icon(Icons.add, color: Colors.grey[600]),
+                          child: Icon(Icons.add, color: SaluteColors.textMuted),
                         ),
                       ),
                     ],
-                  );
+                  ));
                 },
               ),
             ),
@@ -424,7 +441,7 @@ class _UpcomingTasks extends StatelessWidget {
             if (upcoming.isEmpty) {
               return Text(
                 'No tenés tareas próximas.',
-                style: TextStyle(color: Colors.grey[500], fontSize: DsFontSize.md),
+                style: TextStyle(color: SaluteColors.textMuted, fontSize: DsFontSize.md),
               );
             }
             final items = upcoming.take(2).toList();
@@ -520,7 +537,7 @@ class _TaskCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   task,
-                  style: TextStyle(fontSize: DsFontSize.md, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: DsFontSize.md, color: SaluteColors.textMuted),
                 ),
               ],
             ),
@@ -572,23 +589,26 @@ class _MedicalConsultations extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Consultas Medicas',
-              style: TextStyle(
-                fontSize: DsFontSize.h4,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+            const Expanded(
+              child: Text(
+                'Consultas Medicas',
+                style: TextStyle(
+                  fontSize: DsFontSize.h4,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             Text(
               'Ver historial',
-              style: TextStyle(fontSize: DsFontSize.md, color: Colors.grey[600]),
+              style: TextStyle(fontSize: DsFontSize.md, color: SaluteColors.textMuted),
             ),
           ],
         ),
         const SizedBox(height: 14),
         SizedBox(
-          height: 170,
+          height: scaledHeight(context, 170),
           child: StreamBuilder<List<AgendaEvent>>(
             stream: AgendaService.instance.watchAll(),
             builder: (context, snapshot) {
@@ -603,7 +623,7 @@ class _MedicalConsultations extends StatelessWidget {
                 return Center(
                   child: Text(
                     'No hay consultas próximas.',
-                    style: TextStyle(color: Colors.grey[500], fontSize: DsFontSize.md),
+                    style: TextStyle(color: SaluteColors.textMuted, fontSize: DsFontSize.md),
                   ),
                 );
               }
@@ -654,7 +674,7 @@ class _ConsultationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textColor = isDark ? Colors.white : Colors.black87;
     final subtitleColor =
-    isDark ? Colors.white.withValues(alpha: 0.7) : Colors.grey[600]!;
+    isDark ? Colors.white.withValues(alpha: 0.85) : SaluteColors.textMuted;
 
     return Container(
       width: 220,

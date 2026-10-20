@@ -14,8 +14,16 @@ import 'package:saluteapp/core/auth_service.dart';
 import 'package:saluteapp/core/biometric_service.dart';
 import 'package:saluteapp/auth/biometric_lock_screen.dart';
 import 'package:saluteapp/core/models/family_profile.dart';
+import 'package:saluteapp/core/services/attachment_service.dart';
 import 'package:saluteapp/core/services/medication_reminder_service.dart';
+import 'package:saluteapp/core/services/preventive_reminder_service.dart';
 import 'package:saluteapp/core/services/profile_service.dart';
+import 'package:saluteapp/core/services/agenda_service.dart';
+import 'package:saluteapp/core/services/app_settings_service.dart';
+import 'package:saluteapp/core/services/local_alarm_service.dart';
+import 'package:saluteapp/core/services/onboarding_service.dart';
+import 'package:saluteapp/onboarding/onboarding_tour_screen.dart';
+import 'package:saluteapp/core/services/sos_contact_service.dart';
 
 /// Shell que contiene todas las pantallas principales de la app.
 /// Usa [IndexedStack] para mantener el estado de cada pestaña.
@@ -49,6 +57,8 @@ class _SaluteShellState extends State<SaluteShell> with WidgetsBindingObserver {
           (profiles) => ActiveProfileController.instance.ensureValid(profiles),
     );
     _loadDiarioLockPreference();
+    // Recorrido guiado: solo la primera vez que entra esta cuenta.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowTour());
 
     // Alertas de medicación: al tocar una notificación se abre la
     // pantalla de toma, y cada vez que se entra a la app se vuelven a
@@ -58,12 +68,74 @@ class _SaluteShellState extends State<SaluteShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     MedicationReminderService.instance.attach(appNavigatorKey);
     MedicationReminderService.instance.rescheduleAll(force: true);
+    // Avisos automáticos de vacunas y controles (a partir del carné y del
+    // último control, sin depender de eventos de agenda cargados a mano).
+    PreventiveReminderService.instance.attach(appNavigatorKey);
+    PreventiveReminderService.instance.rescheduleAll(force: true);
+
+    // Contacto SOS editado sin conexión: se sube cuando se pueda.
+    SosContactService.instance.syncPending();
+    // Switch de Notificaciones de Configuración.
+    _notificationsWereEnabled = AppSettingsService.instance.notificationsEnabled;
+    AppSettingsService.instance.addListener(_onAppSettingsChanged);
+
+    // Adjuntos cifrados: se borran las copias descifradas que hubieran
+    // quedado de la sesión anterior y se cifra, una sola vez, lo guardado
+    // antes de este cambio.
+    () async {
+      await AttachmentService.instance.clearTempFiles();
+      await AttachmentService.instance.migrateLegacyFiles();
+    }();
+  }
+
+  Future<void> _maybeShowTour() async {
+    final user = AuthService.instance.currentUser;
+    if (user == null) return;
+    // Solo cuentas recién creadas (ver OnboardingService.newAccountWindow).
+    final show = await OnboardingService.instance.shouldAutoShow(
+      user.uid,
+      accountCreatedAt: user.metadata.creationTime,
+    );
+    if (!show) return;
+    // El registro (signin.dart) hace popUntil(isFirst) cuando termina. Si el
+    // recorrido se abre antes de eso, ese pop lo cierra al segundo. Esperamos
+    // a que el Shell sea otra vez la ruta visible (sin pantallas de registro,
+    // términos ni diálogos encima) antes de abrirlo.
+    for (var i = 0; i < 50; i++) {
+      if (!mounted) return;
+      if (ModalRoute.of(context)?.isCurrent ?? true) break;
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    if (!mounted) return;
+    // Un frame extra para que termine la transición del pop anterior.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+    await OnboardingTourScreen.open(context);
+  }
+
+  bool _notificationsWereEnabled = true;
+
+  /// Apagar el switch cancela todo lo programado; volver a prenderlo
+  /// reprograma medicación, controles/vacunas y agenda.
+  Future<void> _onAppSettingsChanged() async {
+    final enabled = AppSettingsService.instance.notificationsEnabled;
+    if (enabled == _notificationsWereEnabled) return;
+    _notificationsWereEnabled = enabled;
+    if (!enabled) {
+      await LocalAlarmService.instance.cancelAllPending();
+    } else {
+      await MedicationReminderService.instance.rescheduleAll(force: true);
+      await PreventiveReminderService.instance.rescheduleAll(force: true);
+      await AgendaService.instance.rescheduleAllAlarms();
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      SosContactService.instance.syncPending();
       MedicationReminderService.instance.rescheduleAll();
+      PreventiveReminderService.instance.rescheduleAll();
     }
   }
 
@@ -80,7 +152,10 @@ class _SaluteShellState extends State<SaluteShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    AppSettingsService.instance.removeListener(_onAppSettingsChanged);
     MedicationReminderService.instance.detach();
+    PreventiveReminderService.instance.detach();
+    AttachmentService.instance.clearTempFiles();
     _profilesSub?.cancel();
     super.dispose();
   }

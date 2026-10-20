@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:saluteapp/components/app_header.dart';
-import 'package:saluteapp/components/design_system.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/medicine_item.dart';
 import 'package:saluteapp/core/models/medication.dart';
@@ -45,18 +44,11 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
   /// tratamiento activo usa este ítem.
   String? _usageLabel(MedicineItem item, List<MedicineItem> all) {
     final users = _treatments
-        .where(
-          (t) =>
-              MedicationBotiquinLink.resolveItem(t.medication, all)?.id ==
-              item.id,
-        )
+        .where((t) => MedicationBotiquinLink.resolveItem(t.medication, all)?.id == item.id)
         .toList();
     if (users.isEmpty) return null;
     final names = users.map((t) => t.profile.name).toSet().join(', ');
-    final perDay = users.fold<int>(
-      0,
-      (sum, t) => sum + t.medication.unitsPerDay,
-    );
+    final perDay = users.fold<int>(0, (sum, t) => sum + t.medication.unitsPerDay);
     if (perDay <= 0) return 'En uso: $names';
     final days = item.currentStock ~/ perDay;
     return 'En uso: $names · alcanza para ~$days día${days == 1 ? '' : 's'}';
@@ -79,9 +71,7 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
   List<MedicineItem> _applyFilters(List<MedicineItem> medicines) {
     final query = _searchController.text.toLowerCase();
     return medicines.where((m) {
-      final matchesSearch =
-          m.name.toLowerCase().contains(query) ||
-          m.dosage.toLowerCase().contains(query);
+      final matchesSearch = m.name.toLowerCase().contains(query) || m.dosage.toLowerCase().contains(query);
       if (!matchesSearch) return false;
 
       switch (_selectedFilter) {
@@ -99,17 +89,11 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
 
   /// [prefill] precarga el formulario (alta desde un tratamiento); [linkTo]
   /// vincula ese tratamiento al ítem recién creado.
-  void _showMedicineForm({
-    MedicineItem? medicine,
-    MedicineItem? prefill,
-    ProfileMedication? linkTo,
-  }) {
+  void _showMedicineForm({MedicineItem? medicine, MedicineItem? prefill, ProfileMedication? linkTo}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => MedicineForm(
         medicine: medicine,
         prefill: prefill,
@@ -118,11 +102,7 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
             if (medicine == null) {
               final newId = await MedicineItemService.instance.addItem(item);
               if (linkTo != null) {
-                await MedicationService.instance.linkBotiquin(
-                  linkTo.profile.id,
-                  linkTo.medication.id,
-                  newId,
-                );
+                await MedicationService.instance.linkBotiquin(linkTo.profile.id, linkTo.medication.id, newId);
               }
             } else {
               await MedicineItemService.instance.updateItem(item);
@@ -130,9 +110,9 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
             if (mounted) _loadTreatments();
           } catch (e) {
             if (!mounted) return;
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('No se pudo guardar: $e')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('No se pudo guardar: $e')),
+            );
           }
         },
       ),
@@ -140,10 +120,7 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
   }
 
   Future<void> _updateStock(MedicineItem medicine, int delta) async {
-    final newStock = (medicine.currentStock + delta).clamp(
-      0,
-      medicine.totalStock,
-    );
+    final newStock = (medicine.currentStock + delta).clamp(0, medicine.totalStock);
     try {
       await MedicineItemService.instance.updateStock(medicine.id, newStock);
     } catch (e) {
@@ -159,9 +136,9 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
       await MedicineItemService.instance.deleteItem(medicine.id);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('No se pudo descartar: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo descartar: $e')),
+      );
     }
   }
 
@@ -176,6 +153,7 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
     return Scaffold(
       backgroundColor: SaluteColors.bgColor,
       floatingActionButton: FloatingActionButton(
+        tooltip: 'Agregar medicamento',
         onPressed: () => _showMedicineForm(),
         backgroundColor: SaluteColors.primaryGreen,
         child: const Icon(Icons.add, color: Colors.white),
@@ -183,10 +161,7 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            AppHeader.secondary(
-              title: 'Mi Botiquín',
-              onBack: widget.onBackToDashboard,
-            ),
+            AppHeader.secondary(title: 'Mi Botiquín', onBack: widget.onBackToDashboard),
             Expanded(
               child: StreamBuilder<List<MedicineItem>>(
                 stream: MedicineItemService.instance.watchAll(),
@@ -198,17 +173,13 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
                         child: Text(
                           'No se pudo cargar el botiquín: ${snapshot.error}',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(color: SaluteColors.textMuted),
                         ),
                       ),
                     );
                   }
                   if (!snapshot.hasData) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: SaluteColors.primaryGreen,
-                      ),
-                    );
+                    return const Center(child: CircularProgressIndicator(color: SaluteColors.primaryGreen));
                   }
 
                   final medicines = snapshot.data!;
@@ -219,25 +190,15 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const DsSectionTitle(title: 'Inventario'),
+                        const Text('Inventario', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
                         const SizedBox(height: 16),
                         _StatsCards(medicines: medicines),
                         const SizedBox(height: 20),
                         _UntrackedTreatments(
                           treatments: _treatments
-                              .where(
-                                (t) =>
-                                    MedicationBotiquinLink.resolveItem(
-                                      t.medication,
-                                      medicines,
-                                    ) ==
-                                    null,
-                              )
+                              .where((t) => MedicationBotiquinLink.resolveItem(t.medication, medicines) == null)
                               .toList(),
-                          onAdd: (t) => _showMedicineForm(
-                            prefill: _prefillFor(t.medication),
-                            linkTo: t,
-                          ),
+                          onAdd: (t) => _showMedicineForm(prefill: _prefillFor(t.medication), linkTo: t),
                         ),
                         TextField(
                           controller: _searchController,
@@ -247,10 +208,7 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
                             prefixIcon: const Icon(Icons.search),
                             filled: true,
                             fillColor: Colors.grey.shade50,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -266,7 +224,7 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
                               child: Text(
                                 'Todavía no cargaste ningún medicamento.\nTocá el "+" para agregar el primero.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.grey.shade500),
+                                style: TextStyle(color: SaluteColors.textMuted),
                               ),
                             ),
                           )
@@ -274,26 +232,21 @@ class _BotiquinScreenState extends State<BotiquinScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 40),
                             child: Center(
-                              child: Text(
-                                'Ningún medicamento coincide con el filtro.',
-                                style: TextStyle(color: Colors.grey.shade500),
-                              ),
+                              child: Text('Ningún medicamento coincide con el filtro.', style: TextStyle(color: SaluteColors.textMuted)),
                             ),
                           )
                         else
-                          ...filtered.map(
-                            (m) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _MedicineCard(
-                                medicine: m,
-                                usage: _usageLabel(m, medicines),
-                                onIncrement: () => _updateStock(m, 1),
-                                onDecrement: () => _updateStock(m, -1),
-                                onEdit: () => _showMedicineForm(medicine: m),
-                                onDiscard: () => _discard(m),
-                              ),
-                            ),
-                          ),
+                          ...filtered.map((m) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _MedicineCard(
+                                  medicine: m,
+                                  usage: _usageLabel(m, medicines),
+                                  onIncrement: () => _updateStock(m, 1),
+                                  onDecrement: () => _updateStock(m, -1),
+                                  onEdit: () => _showMedicineForm(medicine: m),
+                                  onDiscard: () => _discard(m),
+                                ),
+                              )),
                       ],
                     ),
                   );
@@ -320,23 +273,16 @@ class _FilterChips extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: ['Todos', 'Activos', 'Stock Bajo', 'Vencidos']
-            .map(
-              (f) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: FilterChip(
-                  label: Text(
-                    f,
-                    style: TextStyle(
-                      color: selected == f ? Colors.white : Colors.black87,
-                    ),
+            .map((f) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: Text(f, style: TextStyle(color: selected == f ? Colors.white : Colors.black87)),
+                    selected: selected == f,
+                    selectedColor: SaluteColors.primaryGreen,
+                    backgroundColor: Colors.grey.shade100,
+                    onSelected: (_) => onChanged(f),
                   ),
-                  selected: selected == f,
-                  selectedColor: SaluteColors.primaryGreen,
-                  backgroundColor: Colors.grey.shade100,
-                  onSelected: (_) => onChanged(f),
-                ),
-              ),
-            )
+                ))
             .toList(),
       ),
     );
@@ -360,19 +306,12 @@ class _MedicineCard extends StatelessWidget {
     required this.onDiscard,
   });
 
-  Color get _statusColor => medicine.isExpired
-      ? const Color(0xFFC62828)
-      : medicine.isCritical
-      ? const Color(0xFFE67E22)
-      : Colors.grey.shade400;
-  Color get _bgColor => medicine.isExpired
-      ? const Color(0xFFFFF5F5)
-      : medicine.isCritical
-      ? const Color(0xFFFFFBF0)
-      : Colors.white;
+  Color get _statusColor =>
+      medicine.isExpired ? const Color(0xFFC62828) : medicine.isCritical ? SaluteColors.warning : SaluteColors.textMuted;
+  Color get _bgColor =>
+      medicine.isExpired ? const Color(0xFFFFF5F5) : medicine.isCritical ? const Color(0xFFFFFBF0) : Colors.white;
 
-  String _fmtDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  String _fmtDate(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   @override
   Widget build(BuildContext context) {
@@ -391,89 +330,70 @@ class _MedicineCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(medicine.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text('${medicine.dosage} • ${medicine.schedule}', style: TextStyle(color: SaluteColors.textMuted, fontSize: 13)),
                     Text(
-                      medicine.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                      medicine.isExpired ? 'Venció el ${_fmtDate(medicine.expirationDate)}' : 'Vence ${_fmtDate(medicine.expirationDate)}',
+                      style: TextStyle(color: medicine.isExpired ? SaluteColors.danger : SaluteColors.textMuted, fontSize: 13),
+                    ),
+                    if (medicine.isExpired || medicine.isCritical)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              medicine.isExpired ? Icons.error_outline : Icons.warning_amber_rounded,
+                              size: 16,
+                              color: _statusColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                medicine.isExpired ? 'Vencido' : 'Stock bajo',
+                                style: TextStyle(color: _statusColor, fontSize: 13, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${medicine.dosage} • ${medicine.schedule}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                    ),
-                    Text(
-                      medicine.isExpired
-                          ? 'Venció el ${_fmtDate(medicine.expirationDate)}'
-                          : 'Vence ${_fmtDate(medicine.expirationDate)}',
-                      style: TextStyle(
-                        color: medicine.isExpired
-                            ? const Color(0xFFC62828)
-                            : Colors.grey[500],
-                        fontSize: 11,
-                      ),
-                    ),
                     if (usage != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           usage!,
-                          style: const TextStyle(
-                            color: SaluteColors.primaryGreen,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: const TextStyle(color: SaluteColors.primaryGreen, fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                       ),
                   ],
                 ),
               ),
               PopupMenuButton(
-                icon: const Icon(Icons.more_vert, color: Colors.grey),
+                tooltip: 'Más opciones de ${medicine.name}',
+                icon: const Icon(Icons.more_vert, color: SaluteColors.textMuted),
                 onSelected: (value) => value == 'edit' ? onEdit() : onDiscard(),
                 itemBuilder: (_) => [
                   const PopupMenuItem(value: 'edit', child: Text('Editar')),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Text(
-                      'Descartar',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ),
+                  const PopupMenuItem(value: 'delete', child: Text('Descartar', style: TextStyle(color: SaluteColors.danger))),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 12),
-          LinearProgressIndicator(
-            value: medicine.stockPercentage,
-            valueColor: AlwaysStoppedAnimation(_statusColor),
-            backgroundColor: Colors.grey.shade100,
-          ),
+          LinearProgressIndicator(value: medicine.stockPercentage, valueColor: AlwaysStoppedAnimation(_statusColor), backgroundColor: Colors.grey.shade100),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${medicine.currentStock} / ${medicine.totalStock} unidades',
-              ),
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: medicine.currentStock > 0 ? onDecrement : null,
-                    icon: const Icon(Icons.remove_circle_outline),
-                  ),
-                  IconButton(
-                    onPressed: medicine.currentStock < medicine.totalStock
-                        ? onIncrement
-                        : null,
-                    icon: const Icon(
-                      Icons.add_circle_outline,
-                      color: Colors.green,
-                    ),
-                  ),
-                ],
-              ),
+              Expanded(child: Text('${medicine.currentStock} / ${medicine.totalStock} unidades')),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(tooltip: 'Disminuir', onPressed: medicine.currentStock > 0 ? onDecrement : null, icon: const Icon(Icons.remove_circle_outline)),
+                IconButton(
+                  tooltip: 'Aumentar',
+                  onPressed: medicine.currentStock < medicine.totalStock ? onIncrement : null,
+                  icon: const Icon(Icons.add_circle_outline, color: SaluteColors.primaryGreen),
+                ),
+              ])
             ],
           ),
         ],
@@ -489,12 +409,7 @@ class MedicineForm extends StatefulWidget {
   /// se guarda como ítem nuevo). Lo usa el alta desde un tratamiento.
   final MedicineItem? prefill;
   final void Function(MedicineItem) onSave;
-  const MedicineForm({
-    super.key,
-    this.medicine,
-    this.prefill,
-    required this.onSave,
-  });
+  const MedicineForm({super.key, this.medicine, this.prefill, required this.onSave});
 
   @override
   State<MedicineForm> createState() => _MedicineFormState();
@@ -512,8 +427,7 @@ class _MedicineFormState extends State<MedicineForm> {
     _dose = TextEditingController(text: src?.dosage ?? '');
     _schedule = TextEditingController(text: src?.schedule ?? '');
     _stock = TextEditingController(text: (src?.totalStock ?? 0).toString());
-    _expirationDate =
-        src?.expirationDate ?? DateTime.now().add(const Duration(days: 365));
+    _expirationDate = src?.expirationDate ?? DateTime.now().add(const Duration(days: 365));
   }
 
   @override
@@ -538,82 +452,46 @@ class _MedicineFormState extends State<MedicineForm> {
   void _submit() {
     final totalStock = int.tryParse(_stock.text) ?? 0;
     if (_name.text.trim().isEmpty) return;
-    widget.onSave(
-      MedicineItem(
-        id: widget.medicine?.id ?? '',
-        name: _name.text.trim(),
-        dosage: _dose.text.trim(),
-        schedule: _schedule.text.trim().isEmpty
-            ? 'Sin frecuencia definida'
-            : _schedule.text.trim(),
-        expirationDate: _expirationDate,
-        // Al crear, el stock actual arranca igual al total. Al editar, se
-        // conserva el stock actual salvo que el usuario haya subido el total
-        // (ej. compró una caja nueva), en cuyo caso no lo tocamos acá — el
-        // ajuste fino de unidades restantes se hace con los botones +/-.
-        currentStock: widget.medicine == null
-            ? totalStock
-            : widget.medicine!.currentStock.clamp(0, totalStock),
-        totalStock: totalStock,
-      ),
-    );
+    widget.onSave(MedicineItem(
+      id: widget.medicine?.id ?? '',
+      name: _name.text.trim(),
+      dosage: _dose.text.trim(),
+      schedule: _schedule.text.trim().isEmpty ? 'Sin frecuencia definida' : _schedule.text.trim(),
+      expirationDate: _expirationDate,
+      // Al crear, el stock actual arranca igual al total. Al editar, se
+      // conserva el stock actual salvo que el usuario haya subido el total
+      // (ej. compró una caja nueva), en cuyo caso no lo tocamos acá — el
+      // ajuste fino de unidades restantes se hace con los botones +/-.
+      currentStock: widget.medicine == null ? totalStock : widget.medicine!.currentStock.clamp(0, totalStock),
+      totalStock: totalStock,
+    ));
     Navigator.pop(context);
   }
 
-  String _fmtDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  String _fmtDate(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 20,
-        right: 20,
-        top: 20,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.medicine == null
-                ? 'Agregar Medicamento'
-                : 'Editar Medicamento',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          Text(widget.medicine == null ? 'Agregar Medicamento' : 'Editar Medicamento', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          TextField(
-            controller: _name,
-            decoration: const InputDecoration(labelText: 'Nombre'),
-          ),
+          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nombre')),
           const SizedBox(height: 8),
-          TextField(
-            controller: _dose,
-            decoration: const InputDecoration(labelText: 'Dosis (ej: 500mg)'),
-          ),
+          TextField(controller: _dose, decoration: const InputDecoration(labelText: 'Dosis (ej: 500mg)')),
           const SizedBox(height: 8),
-          TextField(
-            controller: _schedule,
-            decoration: const InputDecoration(
-              labelText: 'Frecuencia (ej: 1 c/8h)',
-            ),
-          ),
+          TextField(controller: _schedule, decoration: const InputDecoration(labelText: 'Frecuencia (ej: 1 c/8h)')),
           const SizedBox(height: 8),
-          TextField(
-            controller: _stock,
-            decoration: const InputDecoration(
-              labelText: 'Stock Total (unidades)',
-            ),
-            keyboardType: TextInputType.number,
-          ),
+          TextField(controller: _stock, decoration: const InputDecoration(labelText: 'Stock Total (unidades)'), keyboardType: TextInputType.number),
           const SizedBox(height: 8),
           InkWell(
             onTap: _pickExpirationDate,
             child: InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'Fecha de vencimiento',
-              ),
+              decoration: const InputDecoration(labelText: 'Fecha de vencimiento'),
               child: Text(_fmtDate(_expirationDate)),
             ),
           ),
@@ -622,13 +500,8 @@ class _MedicineFormState extends State<MedicineForm> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: SaluteColors.primaryGreen,
-              ),
-              child: const Text(
-                'Guardar',
-                style: TextStyle(color: Colors.white),
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: SaluteColors.primaryGreen),
+              child: const Text('Guardar', style: TextStyle(color: Colors.white)),
             ),
           ),
           const SizedBox(height: 20),
@@ -664,11 +537,7 @@ class _UntrackedTreatments extends StatelessWidget {
             treatments.length == 1
                 ? '1 tratamiento activo no está en tu botiquín'
                 : '${treatments.length} tratamientos activos no están en tu botiquín',
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: SaluteColors.primaryGreen,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: SaluteColors.primaryGreen),
           ),
           const SizedBox(height: 4),
           Text(
@@ -681,26 +550,16 @@ class _UntrackedTreatments extends StatelessWidget {
               padding: const EdgeInsets.only(top: 4),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.medication_outlined,
-                    size: 18,
-                    color: SaluteColors.primaryGreen,
-                  ),
+                  const Icon(Icons.medication_outlined, size: 18, color: SaluteColors.primaryGreen),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '${t.medication.name} · ${t.profile.name}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  TextButton(
-                    onPressed: () => onAdd(t),
-                    child: const Text('Agregar'),
-                  ),
+                  TextButton(onPressed: () => onAdd(t), child: const Text('Agregar')),
                 ],
               ),
             ),
@@ -735,11 +594,7 @@ class _StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))
         ],
       ),
       child: Column(
@@ -749,34 +604,12 @@ class _StatCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Icon(icon, color: color, size: 24),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.grey.shade600,
-                  letterSpacing: 0.5,
-                ),
-              ),
+              Expanded(child: Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: SaluteColors.textMuted, letterSpacing: 0.5))),
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-              color: Colors.black,
-            ),
-          ),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          Text(value, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.black)),
+          Text(subtitle, style: TextStyle(fontSize: 13, color: SaluteColors.textMuted, fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -790,9 +623,7 @@ class _StatsCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final int total = medicines.length;
-    final int alertas = medicines
-        .where((m) => m.isCritical || m.isExpired)
-        .length;
+    final int alertas = medicines.where((m) => m.isCritical || m.isExpired).length;
     final int reposicion = medicines.where((m) => m.currentStock < 5).length;
 
     return Column(
@@ -815,7 +646,7 @@ class _StatsCards extends StatelessWidget {
                 title: 'ALERTAS',
                 value: '$alertas',
                 subtitle: 'Por caducar pronto',
-                color: Colors.redAccent,
+                color: SaluteColors.danger,
               ),
             ),
           ],
@@ -826,7 +657,7 @@ class _StatsCards extends StatelessWidget {
           title: 'REPOSICIÓN',
           value: '$reposicion',
           subtitle: 'Stock bajo',
-          color: Colors.orange,
+          color: SaluteColors.warning,
         ),
       ],
     );

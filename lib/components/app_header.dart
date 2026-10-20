@@ -1,3 +1,4 @@
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:flutter/material.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/components/design_system.dart';
@@ -45,7 +46,8 @@ class AppHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GestureDetector(
+          A11yTap(
+            label: 'Salute, ir al inicio',
             onTap: onLogoTap,
             child: const Text(
               'Salute',
@@ -60,7 +62,10 @@ class AppHeader extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              GestureDetector(
+              A11yTap(
+                label: showNotificationBadge
+                    ? 'Notificaciones, hay avisos nuevos'
+                    : 'Notificaciones',
                 onTap: onNotifications,
                 child: Container(
                   width: 44,
@@ -117,7 +122,8 @@ class AppHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
         children: [
-          GestureDetector(
+          A11yTap(
+            label: 'Volver',
             onTap: onBack ?? () => Navigator.maybePop(context),
             child: Container(
               width: 40,
@@ -146,7 +152,8 @@ class AppHeader extends StatelessWidget {
             ),
           ),
           if (onSettings != null)
-            GestureDetector(
+            A11yTap(
+              label: 'Configuración',
               onTap: onSettings,
               child: Container(
                 width: 40,
@@ -167,7 +174,7 @@ class AppHeader extends StatelessWidget {
               ),
             )
           else
-            const SizedBox(width: 40, height: 40),
+            const SizedBox(width: 48, height: 48), // mismo ancho que el botón: el título queda centrado
         ],
       ),
     );

@@ -8,6 +8,7 @@ import 'package:saluteapp/core/models/dose_log.dart';
 import 'package:saluteapp/core/models/dose_slot.dart';
 import 'package:saluteapp/core/models/medication.dart';
 import 'package:saluteapp/core/services/agenda_service.dart';
+import 'package:saluteapp/core/services/app_settings_service.dart';
 import 'package:saluteapp/core/services/dose_log_service.dart';
 import 'package:saluteapp/core/services/medication_botiquin_link.dart';
 import 'package:saluteapp/core/services/medication_service.dart';
@@ -71,7 +72,11 @@ const _agendaTypeIcons = {
 };
 
 class NotificationsService {
-  NotificationsService._();
+  NotificationsService._() {
+    // Al prender/apagar el switch de Notificaciones el puntito del header se
+    // actualiza solo: apagado → 0; prendido → se recalcula.
+    AppSettingsService.instance.addListener(refreshUnread);
+  }
   static final NotificationsService instance = NotificationsService._();
 
   /// Días sin control médico a partir de los cuales se avisa.
@@ -91,6 +96,12 @@ class NotificationsService {
   /// perfiles + leídas/descartadas) y lo publica en [unreadBadge].
   Future<void> refreshUnread() async {
     final seq = ++_badgeSeq;
+    // Switch de Notificaciones apagado: sin puntito y sin el cálculo (que
+    // lee Firestore). La lista de NotificationsScreen sigue disponible.
+    if (!AppSettingsService.instance.notificationsEnabled) {
+      unreadBadge.value = 0;
+      return;
+    }
     try {
       final count = await unreadCount();
       if (seq == _badgeSeq) unreadBadge.value = count;
@@ -103,7 +114,7 @@ class NotificationsService {
   /// tiene la lista en memoria) e invalida cualquier [refreshUnread] en curso.
   void setUnread(int count) {
     _badgeSeq++;
-    unreadBadge.value = count;
+    unreadBadge.value = AppSettingsService.instance.notificationsEnabled ? count : 0;
   }
 
   /// Cuántas de [notifications] prenden el puntito: las que no son `info`

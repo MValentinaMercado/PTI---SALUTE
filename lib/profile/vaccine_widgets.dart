@@ -1,3 +1,4 @@
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:flutter/material.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/services/vaccine_catalog.dart';
@@ -73,14 +74,15 @@ class VaccineDateField extends StatelessWidget {
                 value != null ? fmtVaccineDate(value!) : placeholder,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: value != null ? Colors.black87 : Colors.grey[400],
+                  color: value != null ? Colors.black87 : SaluteColors.textMuted,
                 ),
               ),
             ),
             if (value != null && onClear != null)
-              GestureDetector(
+              A11yTap(
+                label: 'Borrar la fecha',
                 onTap: onClear,
-                child: Icon(Icons.close_rounded, size: 18, color: Colors.grey[500]),
+                child: Icon(Icons.close_rounded, size: 18, color: SaluteColors.textMuted),
               ),
           ],
         ),
@@ -96,12 +98,12 @@ Color vaccineStatusColor(VaccineStatus s) {
     case VaccineStatus.proxima:
       return SaluteColors.darkGreen;
     case VaccineStatus.pendiente:
-      return SaluteColors.brownOrange;
+      return SaluteColors.warning;
     case VaccineStatus.verificar:
       return SaluteColors.terracotta;
     case VaccineStatus.sinRegistro:
     case VaccineStatus.noCorresponde:
-      return Colors.grey.shade600;
+      return SaluteColors.textMuted;
   }
 }
 
@@ -121,7 +123,9 @@ class VaccineStatusChip extends StatelessWidget {
       ),
       child: Text(
         status.label.toUpperCase(),
-        style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.3),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: c, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.3),
       ),
     );
   }

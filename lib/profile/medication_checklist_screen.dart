@@ -8,12 +8,11 @@ import 'package:saluteapp/core/models/medication.dart';
 import 'package:saluteapp/core/services/dose_log_service.dart';
 import 'package:saluteapp/core/services/local_alarm_service.dart';
 import 'package:saluteapp/core/services/medication_check_service.dart';
-import 'package:saluteapp/core/services/medication_reminder_service.dart';
 import 'package:saluteapp/core/services/medication_service.dart';
 
 const _weekdays = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 const _months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-const _lateColor = Color(0xFFE67E22);
+const _lateColor = SaluteColors.warning;
 const _missedColor = Color(0xFFC62828);
 
 DateTime _dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
@@ -99,23 +98,6 @@ class _MedicationChecklistScreenState extends State<MedicationChecklistScreen> {
     }
   }
 
-  Future<void> _sendTest() async {
-    if (_meds.isEmpty) {
-      _snack('Primero agregá una medicación para probar la alerta.');
-      return;
-    }
-    try {
-      await MedicationReminderService.instance.sendTest(
-        profileId: widget.profile.id,
-        profileName: widget.profile.name,
-        medication: _meds.first,
-      );
-      _snack('Te mandamos una alerta de prueba en 5 segundos. Tocala para ver la pantalla de toma.');
-    } catch (e) {
-      _snack('No se pudo programar la alerta de prueba: $e');
-    }
-  }
-
   void _snack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
@@ -169,7 +151,7 @@ class _MedicationChecklistScreenState extends State<MedicationChecklistScreen> {
   Widget _message(String text) => Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(text, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
+          child: Text(text, textAlign: TextAlign.center, style: TextStyle(color: SaluteColors.textMuted)),
         ),
       );
 
@@ -205,7 +187,7 @@ class _MedicationChecklistScreenState extends State<MedicationChecklistScreen> {
                   ? 'Todavía no hay medicación cargada para ${widget.profile.name}.'
                   : 'No hay tomas programadas para este día.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade500),
+              style: TextStyle(color: SaluteColors.textMuted),
             ),
           )
         else
@@ -223,23 +205,6 @@ class _MedicationChecklistScreenState extends State<MedicationChecklistScreen> {
           const SizedBox(height: 8),
           _NoScheduleCard(medications: noSchedule),
         ],
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _sendTest,
-                icon: const Icon(Icons.notifications_active_outlined, size: 18),
-                label: const Text('Probar alerta'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: SaluteColors.primaryGreen,
-                  side: const BorderSide(color: SaluteColors.primaryGreen),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -383,7 +348,7 @@ class _DoseTile extends StatelessWidget {
                       ),
                     ),
                     if (subtitle.isNotEmpty)
-                      Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                      Text(subtitle, style: TextStyle(fontSize: 13, color: SaluteColors.textMuted)),
                   ],
                 ),
               ),
@@ -461,7 +426,7 @@ class _ChoiceButton extends StatelessWidget {
               children: [
                 Icon(icon, size: 18, color: fg),
                 const SizedBox(width: 6),
-                Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 14)),
+                Flexible(child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 14))),
               ],
             ),
           ),
@@ -518,7 +483,7 @@ class _NoScheduleCard extends StatelessWidget {
             '${medications.map((m) => m.name).join(', ')} no tiene${medications.length == 1 ? '' : 'n'} horarios, '
             'por eso no aparece${medications.length == 1 ? '' : 'n'} en el checklist ni genera${medications.length == 1 ? '' : 'n'} alertas. '
             'Editá la medicación para agregar horarios.',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 13, color: SaluteColors.textMuted),
           ),
         ],
       ),

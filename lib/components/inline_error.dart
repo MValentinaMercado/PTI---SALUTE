@@ -59,14 +59,16 @@ class InlineErrorBanner extends StatelessWidget {
                       ),
                     ),
                     if (onDismiss != null)
-                      InkWell(
+                      Tooltip(
+                       message: 'Cerrar mensaje de error',
+                       child: InkWell(
                         onTap: onDismiss,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(24),
                         child: const Padding(
-                          padding: EdgeInsets.all(4),
+                          padding: EdgeInsets.all(15), // 18 + 30 = 48 dp
                           child: Icon(Icons.close, size: 18, color: _errorColor),
                         ),
-                      ),
+                      )),
                   ],
                 ),
               ),

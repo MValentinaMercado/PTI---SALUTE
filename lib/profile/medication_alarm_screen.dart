@@ -165,8 +165,8 @@ class _MedicationAlarmScreenState extends State<MedicationAlarmScreen> {
                           customBorder: const CircleBorder(),
                           onTap: () => Navigator.of(context).pop(),
                           child: const SizedBox(
-                            width: 44,
-                            height: 44,
+                            width: 48,
+                            height: 48,
                             child: Icon(Icons.close_rounded, color: _ink, size: 22),
                           ),
                         ),
@@ -286,7 +286,7 @@ class _MedicationAlarmScreenState extends State<MedicationAlarmScreen> {
                       Transform.flip(flipX: true, child: const Icon(Icons.replay_rounded, color: _ink, size: 34)),
                       const Padding(
                         padding: EdgeInsets.only(top: 3),
-                        child: Text('15', style: TextStyle(color: _ink, fontSize: 10, fontWeight: FontWeight.w800)),
+                        child: Text('15', style: TextStyle(color: _ink, fontSize: 12, fontWeight: FontWeight.w800)),
                       ),
                     ],
                   ),

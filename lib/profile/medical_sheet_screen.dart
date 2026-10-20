@@ -205,7 +205,7 @@ class _MedicalSheetScreenState extends State<MedicalSheetScreen> {
               Text(
                 _error ?? 'No se pudo armar la ficha.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[600]),
+                style: TextStyle(color: SaluteColors.textMuted),
               ),
               const SizedBox(height: 12),
               TextButton(onPressed: _load, child: const Text('Reintentar')),
@@ -228,12 +228,12 @@ class _MedicalSheetScreenState extends State<MedicalSheetScreen> {
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 2),
-        Text(data.generatedLabel, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+        Text(data.generatedLabel, style: TextStyle(fontSize: 12, color: SaluteColors.textMuted)),
         const SizedBox(height: 16),
         const Text(
           'QUÉ INCLUIR',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
             color: SaluteColors.primaryGreen,
             letterSpacing: 1,
@@ -273,7 +273,7 @@ class _MedicalSheetScreenState extends State<MedicalSheetScreen> {
           data.isPet
               ? 'El historial viene desactivado: incluilo si el veterinario lo necesita.'
               : 'El historial viene desactivado: es la información más sensible, incluilo solo si hace falta.',
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
         ),
         for (final e in unavailable)
           Padding(
@@ -288,7 +288,7 @@ class _MedicalSheetScreenState extends State<MedicalSheetScreen> {
         const SizedBox(height: 4),
         Text(
           MedicalSheetData.disclaimer,
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+          style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
         ),
       ],
     );
@@ -328,10 +328,7 @@ class _MedicalSheetScreenState extends State<MedicalSheetScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: FilledButton.icon(
+          ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 50), child: FilledButton.icon(
               onPressed: _busy ? null : _openShareSheet,
               icon: const Icon(Icons.share_outlined, size: 18),
               label: const Text(
@@ -381,7 +378,7 @@ class _BlockCard extends StatelessWidget {
           Text(
             block.title.toUpperCase(),
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               color: SaluteColors.primaryGreen,
               letterSpacing: 0.8,
@@ -415,7 +412,7 @@ class _BlockCard extends StatelessWidget {
                         if (line.detail != null)
                           Text(
                             line.detail!,
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
                           ),
                       ],
                     ),
@@ -499,10 +496,7 @@ class _ShareSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: FilledButton.icon(
+            ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 50), child: FilledButton.icon(
                 onPressed: () => Navigator.pop(context, _ShareFormat.pdf),
                 icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
                 label: const Text('Compartir como PDF', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -513,10 +507,7 @@ class _ShareSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton.icon(
+            ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 50), child: OutlinedButton.icon(
                 onPressed: () => Navigator.pop(context, _ShareFormat.text),
                 icon: const Icon(Icons.notes_outlined, size: 18),
                 label: const Text('Compartir como texto', style: TextStyle(fontWeight: FontWeight.w700)),

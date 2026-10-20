@@ -196,6 +196,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Volver',
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.arrow_back, color: Colors.black87),
           ),
@@ -274,16 +275,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
             errorText: _passwordError,
             onChanged: () => setState(() => _passwordError = null),
             suffixIcon: IconButton(
+              tooltip: 'Mostrar u ocultar contraseña',
               icon: Icon(
                 _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: Colors.grey[500],
+                color: SaluteColors.textMuted,
                 size: 22,
               ),
               onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
             ),
           ),
           const SizedBox(height: 8),
-          Text(PasswordPolicy.hint, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          Text(PasswordPolicy.hint, style: TextStyle(fontSize: 12, color: SaluteColors.textMuted)),
           const SizedBox(height: 20),
           const _FieldLabel('CONFIRMAR CONTRASEÑA'),
           const SizedBox(height: 10),
@@ -331,7 +333,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       style: const TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+        hintStyle: TextStyle(color: SaluteColors.textMuted, fontSize: 15),
         errorText: errorText,
         errorMaxLines: 3,
         filled: true,
@@ -369,15 +371,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Checkbox(
-              value: _acceptedTerms,
-              activeColor: SaluteColors.primaryGreen,
-              onChanged: _loading
-                  ? null
-                  : (v) => setState(() {
-                        _acceptedTerms = v ?? false;
-                        if (_acceptedTerms) _termsError = null;
-                      }),
+            Semantics(
+              label: 'Acepto los términos y condiciones',
+              child: Checkbox(
+                value: _acceptedTerms,
+                activeColor: SaluteColors.primaryGreen,
+                onChanged: _loading
+                    ? null
+                    : (v) => setState(() {
+                          _acceptedTerms = v ?? false;
+                          if (_acceptedTerms) _termsError = null;
+                        }),
+              ),
             ),
             const Expanded(
               child: Padding(
@@ -422,10 +427,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ],
       ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: FilledButton(
+      child: ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 56), child: FilledButton(
           onPressed: _loading ? null : _register,
           style: FilledButton.styleFrom(
             backgroundColor: SaluteColors.primaryGreen,
@@ -465,7 +467,7 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
         color: SaluteColors.primaryGreen,
         letterSpacing: 1,

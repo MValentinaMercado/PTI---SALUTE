@@ -5,11 +5,27 @@ import 'package:saluteapp/core/services/agenda_service.dart';
 
 /// Alta rápida de un turno/estudio/vacuna/control para un perfil,
 /// que va a aparecer en la agenda familiar y en las alertas de su perfil.
+/// Con [existing] la misma pantalla edita un evento ya cargado.
 class AgendaEventFormScreen extends StatefulWidget {
   final String profileId;
   final String profileName;
+  final AgendaEvent? existing;
 
-  const AgendaEventFormScreen({super.key, required this.profileId, required this.profileName});
+  const AgendaEventFormScreen({
+    super.key,
+    required this.profileId,
+    required this.profileName,
+    this.existing,
+  });
+
+  /// Textos de las opciones de alarma (se reusan en el detalle del evento).
+  static const reminderLabels = <int?, String>{
+    null: 'Sin alarma',
+    15: '15 min antes',
+    60: '1 hora antes',
+    180: '3 horas antes',
+    1440: '1 día antes',
+  };
 
   @override
   State<AgendaEventFormScreen> createState() => _AgendaEventFormScreenState();
@@ -22,7 +38,25 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
   DateTime _date = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _time = const TimeOfDay(hour: 9, minute: 0);
   int? _reminderMinutesBefore;
+  AgendaEventStatus _status = AgendaEventStatus.pendiente;
   bool _saving = false;
+
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    if (e != null) {
+      _titleController.text = e.title;
+      _locationController.text = e.location;
+      _type = e.type;
+      _date = DateTime(e.date.year, e.date.month, e.date.day);
+      _time = TimeOfDay(hour: e.date.hour, minute: e.date.minute);
+      _reminderMinutesBefore = e.reminderMinutesBefore;
+      _status = e.status;
+    }
+  }
 
   static const _typeLabels = {
     AgendaEventType.turno: 'Turno',
@@ -31,12 +65,19 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
     AgendaEventType.control: 'Control',
   };
 
-  static const _reminderOptions = <int?, String>{
-    null: 'Sin alarma',
-    15: '15 min antes',
-    60: '1 hora antes',
-    180: '3 horas antes',
-    1440: '1 día antes',
+  /// Tipos elegibles. Al editar un evento de un tipo que no se ofrece para
+  /// cargar nuevos (ej. medicación), se muestra también para no perderlo.
+  Map<AgendaEventType, String> get _typeChoices => {
+        ..._typeLabels,
+        if (!_typeLabels.containsKey(_type)) _type: _type == AgendaEventType.medicacion ? 'Medicación' : 'Otro',
+      };
+
+  static const _reminderOptions = AgendaEventFormScreen.reminderLabels;
+
+  static const _statusLabels = {
+    AgendaEventStatus.pendiente: 'Pendiente',
+    AgendaEventStatus.completado: 'Completado',
+    AgendaEventStatus.cancelado: 'Cancelado',
   };
 
   @override
@@ -50,7 +91,9 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _date,
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      firstDate: _isEditing && _date.isBefore(DateTime.now())
+          ? _date
+          : DateTime.now().subtract(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 730)),
     );
     if (picked != null) setState(() => _date = picked);
@@ -71,18 +114,24 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
     setState(() => _saving = true);
     try {
       final fullDate = DateTime(_date.year, _date.month, _date.day, _time.hour, _time.minute);
+      final existing = widget.existing;
       final event = AgendaEvent(
-        id: '',
-        ownerUid: '',
+        id: existing?.id ?? '',
+        ownerUid: existing?.ownerUid ?? '',
         profileId: widget.profileId,
         profileName: widget.profileName,
         type: _type,
+        status: _status,
         title: title,
         location: _locationController.text.trim(),
         date: fullDate,
         reminderMinutesBefore: _reminderMinutesBefore,
       );
-      await AgendaService.instance.addEvent(event);
+      if (existing != null) {
+        await AgendaService.instance.updateEvent(event);
+      } else {
+        await AgendaService.instance.addEvent(event);
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (_) {
@@ -101,7 +150,7 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
         backgroundColor: SaluteColors.bgColor,
         elevation: 0,
         foregroundColor: Colors.black87,
-        title: Text('Nuevo evento · ${widget.profileName}'),
+        title: Text('${_isEditing ? 'Editar evento' : 'Nuevo evento'} · ${widget.profileName}'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -114,7 +163,7 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
-                children: _typeLabels.entries.map((entry) {
+                children: _typeChoices.entries.map((entry) {
                   final selected = _type == entry.key;
                   return ChoiceChip(
                     label: Text(entry.value),
@@ -149,11 +198,35 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
                 ],
               ),
               const SizedBox(height: 20),
+              if (_isEditing) ...[
+                const _FieldLabel('ESTADO'),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: _statusLabels.entries.map((entry) {
+                    final selected = _status == entry.key;
+                    return ChoiceChip(
+                      label: Text(entry.value),
+                      selected: selected,
+                      onSelected: (_) => setState(() => _status = entry.key),
+                      selectedColor: SaluteColors.primaryGreen,
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selected ? Colors.white : Colors.grey[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                      side: BorderSide(color: selected ? SaluteColors.primaryGreen : Colors.grey[300]!),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+              ],
               const _FieldLabel('CONFIGURAR ALARMA'),
               const SizedBox(height: 4),
               Text(
                 'Te llega como notificación al celular, aunque tengas la app cerrada.',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
               ),
               const SizedBox(height: 10),
               Wrap(
@@ -198,9 +271,9 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: Colors.grey[500]),
+            Icon(icon, size: 18, color: SaluteColors.textMuted),
             const SizedBox(width: 10),
-            Text(label, style: const TextStyle(color: Colors.black87, fontSize: 15)),
+            Flexible(child: Text(label, style: const TextStyle(color: Colors.black87, fontSize: 15))),
           ],
         ),
       ),
@@ -213,7 +286,7 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
       style: const TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+        hintStyle: TextStyle(color: SaluteColors.textMuted, fontSize: 15),
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -231,10 +304,7 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
   }
 
   Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: FilledButton(
+    return ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 56), child: FilledButton(
         onPressed: _saving ? null : _save,
         style: FilledButton.styleFrom(
           backgroundColor: SaluteColors.primaryGreen,
@@ -246,7 +316,7 @@ class _AgendaEventFormScreenState extends State<AgendaEventFormScreen> {
           height: 22,
           child: CircularProgressIndicator(strokeWidth: 2.4, valueColor: AlwaysStoppedAnimation(Colors.white)),
         )
-            : const Text('Agregar a la agenda', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+            : Text(_isEditing ? 'Guardar cambios' : 'Agregar a la agenda', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       ),
     );
   }
@@ -261,7 +331,7 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
         color: SaluteColors.primaryGreen,
         letterSpacing: 1,

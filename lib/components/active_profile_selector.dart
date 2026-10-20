@@ -1,3 +1,4 @@
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:saluteapp/core/active_profile_controller.dart';
@@ -53,8 +54,10 @@ class ActiveProfileSelector extends StatelessWidget {
       builder: (context, _) {
         final active = ActiveProfileController.instance.active;
         final isPet = active?.type == ProfileType.mascota;
-        return GestureDetector(
+        return A11yTap(
           onTap: () => _openPicker(context),
+          label: 'Perfil activo: ${active?.name ?? 'cargando'}',
+          hint: 'Tocar para cambiar de perfil',
           child: Container(
             padding: const EdgeInsets.fromLTRB(6, 6, 14, 6),
             decoration: BoxDecoration(
@@ -78,21 +81,25 @@ class ActiveProfileSelector extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(width: 8),
-                Text(
+                Flexible(
+                  child: Text(
                   // Mientras carga el primer snapshot de Firestore
                   // (`active` todavía null), no mostramos "Elegir perfil":
                   // eso sugeriría que la app no sabe qué hacer, cuando en
                   // realidad ya sabemos que va a caer en el perfil propio
                   // apenas llegue el snapshot (ver ActiveProfileController.ensureValid).
                   active?.name ?? 'Cargando…',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: DsFontSize.md,
                     color: Colors.black87,
                   ),
+                  ),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.expand_more, size: 18, color: Colors.grey[500]),
+                Icon(Icons.expand_more, size: 18, color: SaluteColors.textMuted),
               ],
             ),
           ),
@@ -122,7 +129,7 @@ class _ProfileSwitcherSheet extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Podés cargar datos para vos y para tus dependientes.',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 13, color: SaluteColors.textMuted),
             ),
             const SizedBox(height: 12),
             ...profiles.map(

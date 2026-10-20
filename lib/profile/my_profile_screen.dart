@@ -4,6 +4,7 @@ import 'package:saluteapp/core/models/family_profile.dart';
 import 'package:saluteapp/core/services/profile_service.dart';
 import 'package:saluteapp/profile/live_profile_screen.dart';
 import 'package:saluteapp/profile/profile_form_screen.dart';
+import 'package:saluteapp/core/colors.dart';
 
 /// Pestaña PERFIL del nav: el perfil del propio usuario autenticado
 /// (no la lista de toda la familia —eso vive en "Mi familia", que ahora
@@ -30,7 +31,7 @@ class MyProfileScreen extends StatelessWidget {
                 child: Text(
                   'No se pudo cargar tu perfil.\n${snapshot.error}',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600]),
+                  style: TextStyle(color: SaluteColors.textMuted),
                 ),
               ),
             ),

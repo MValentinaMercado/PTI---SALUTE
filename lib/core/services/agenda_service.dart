@@ -177,4 +177,31 @@ class AgendaService {
     await _col.doc(eventId).delete();
     await LocalAlarmService.instance.cancelFor(eventId);
   }
+
+  /// Borra varios eventos de una vez (selección múltiple en la agenda).
+  /// Cada evento se borra por separado: si uno falla (ej. permisos) los demás
+  /// igual se eliminan. Devuelve cuántos se borraron.
+  Future<int> deleteEvents(Iterable<String> eventIds) async {
+    var deleted = 0;
+    for (final id in eventIds) {
+      try {
+        await deleteEvent(id);
+        deleted++;
+      } catch (_) {
+        // Se sigue con el resto; el llamador compara contra el total.
+      }
+    }
+    return deleted;
+  }
+
+  /// Vuelve a programar los recordatorios de todos los eventos pendientes
+  /// (al reactivar las notificaciones en Configuración).
+  Future<void> rescheduleAllAlarms() async {
+    try {
+      final events = await watchAll().first;
+      for (final e in events) {
+        if (e.reminderTime != null) await LocalAlarmService.instance.scheduleFor(e);
+      }
+    } catch (_) {}
+  }
 }

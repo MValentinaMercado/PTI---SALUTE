@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:saluteapp/core/colors.dart';
@@ -243,7 +244,7 @@ class _VaccineScanScreenState extends State<VaccineScanScreen> {
                   child: Text(
                     'Todavía no hay vacunas para guardar.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
+                    style: TextStyle(color: SaluteColors.textMuted, fontWeight: FontWeight.w600),
                   ),
                 ),
               for (final row in _rows) ...[
@@ -261,9 +262,7 @@ class _VaccineScanScreenState extends State<VaccineScanScreen> {
                 label: const Text('Agregar otra vacuna a mano'),
               ),
               const SizedBox(height: 22),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
+              ConstrainedBox(constraints: const BoxConstraints(minHeight: 52), child: ElevatedButton(
                   onPressed: (_saving || selected == 0) ? null : _saveAll,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: SaluteColors.primaryGreen,
@@ -357,10 +356,13 @@ class _DraftTile extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(6, 10, 6, 10),
           child: Row(
             children: [
-              Checkbox(
-                value: row.include,
-                activeColor: SaluteColors.primaryGreen,
-                onChanged: d.isComplete ? (v) => onToggle(v ?? false) : null,
+              Semantics(
+                label: 'Incluir ${d.name.isEmpty ? 'vacuna sin nombre' : d.name}',
+                child: Checkbox(
+                  value: row.include,
+                  activeColor: SaluteColors.primaryGreen,
+                  onChanged: d.isComplete ? (v) => onToggle(v ?? false) : null,
+                ),
               ),
               Expanded(
                 child: Column(
@@ -387,7 +389,7 @@ class _DraftTile extends StatelessWidget {
               IconButton(
                 tooltip: 'Descartar',
                 onPressed: onRemove,
-                icon: Icon(Icons.close_rounded, color: Colors.grey[500]),
+                icon: Icon(Icons.close_rounded, color: SaluteColors.textMuted),
               ),
             ],
           ),
@@ -434,7 +436,7 @@ class _AttachCard extends StatelessWidget {
           Text(
             '${isPet ? 'Sacale una foto a la libreta sanitaria o al certificado del veterinario.' : 'Sacale una foto al carné o a la libreta de vacunación.'} '
             'Se lee en tu teléfono y el archivo se guarda solo en este dispositivo.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
           ),
           const SizedBox(height: 12),
           if (processing)
@@ -448,7 +450,7 @@ class _AttachCard extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2.4, color: SaluteColors.primaryGreen),
                   ),
                   SizedBox(width: 12),
-                  Text('Leyendo el certificado…'),
+                  Expanded(child: Text('Leyendo el certificado…')),
                 ],
               ),
             )
@@ -471,17 +473,17 @@ class _AttachCard extends StatelessWidget {
                     width: 64,
                     height: 64,
                     child: attachment!.isImage
-                        ? FutureBuilder<File?>(
-                            future: AttachmentService.instance.resolve(attachment!.path),
+                        ? FutureBuilder<Uint8List?>(
+                            future: AttachmentService.instance.readBytes(attachment!.path),
                             builder: (_, snap) {
-                              final f = snap.data;
-                              if (f == null) return const ColoredBox(color: Colors.black12);
-                              return Image.file(f, fit: BoxFit.cover, cacheWidth: 200);
+                              final bytes = snap.data;
+                              if (bytes == null) return const ColoredBox(color: Colors.black12);
+                              return Image.memory(bytes, fit: BoxFit.cover, cacheWidth: 200, semanticLabel: 'Foto del carné de vacunación adjunta');
                             },
                           )
                         : const ColoredBox(
                             color: Color(0x14000000),
-                            child: Icon(Icons.picture_as_pdf, color: SaluteColors.terracotta, size: 32),
+                            child: Icon(Icons.picture_as_pdf, color: SaluteColors.terracotta, size: 32, semanticLabel: 'Archivo PDF adjunto'),
                           ),
                   ),
                 ),

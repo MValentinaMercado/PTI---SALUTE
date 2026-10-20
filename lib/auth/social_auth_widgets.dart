@@ -1,4 +1,6 @@
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:flutter/material.dart';
+import 'package:saluteapp/core/colors.dart';
 
 /// Widgets de inicio de sesión social compartidos entre
 /// [LoginScreen] y [RegisterScreen] para no duplicar el botón
@@ -21,9 +23,9 @@ class AuthDivider extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Colors.grey[500],
+              color: SaluteColors.textMuted,
               letterSpacing: 0.8,
             ),
           ),
@@ -46,7 +48,8 @@ class GoogleAuthButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: GestureDetector(
+      child: A11yTap(
+        label: loading ? 'Ingresando con Google, esperá' : 'Continuar con Google',
         onTap: loading ? null : onTap,
         child: Opacity(
           opacity: loading ? 0.5 : 1,

@@ -4,7 +4,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:saluteapp/components/app_header.dart';
+import 'package:saluteapp/components/voice_buttons.dart';
 import 'package:saluteapp/core/colors.dart';
+import 'package:saluteapp/core/services/tts_service.dart';
 import 'package:saluteapp/core/models/chat_models.dart';
 import 'package:saluteapp/core/services/ai_adapters_service.dart';
 import 'package:saluteapp/core/services/chat_history_repository.dart';
@@ -43,13 +45,26 @@ class _SaluteAIScreenState extends State<SaluteAIScreen> {
 
   @override
   void dispose() {
+    TtsService.instance.stop();
     _inputController.dispose();
     super.dispose();
   }
 
   Future<void> _refreshHistory() async {
     final all = await _repo.loadAll();
-    if (mounted) setState(() => _history = all);
+    final supportedIds = _aiOptions.map((option) => option.model.id).toSet();
+    final supported = all
+        .where((conversation) => supportedIds.contains(conversation.aiId))
+        .toList();
+
+    // Descarta conversaciones creadas con proveedores que ya no existen.
+    for (final conversation in all) {
+      if (!supportedIds.contains(conversation.aiId)) {
+        await _repo.delete(conversation.id);
+      }
+    }
+
+    if (mounted) setState(() => _history = supported);
   }
 
   void _newConversation() {
@@ -407,20 +422,6 @@ const List<_AiOption> _aiOptions = [
     '$_salutePrompt Sos un asistente general de salud, hábitos y '
         'estilo de vida.',
   ),
-  _AiOption(
-    model: AiModel(
-      id: 'claude-sonnet-5-5',
-      name: 'Claude Sonnet',
-      provider: AiProvider.anthropic,
-    ),
-    name: 'Claude Sonnet',
-    description: 'Asistente de bienestar',
-    icon: Icons.psychology_outlined,
-    color: Color(0xFF9A6545),
-    systemPrompt:
-    '$_salutePrompt Te enfocás en bienestar integral: descanso, manejo '
-        'del estrés, alimentación y hábitos saludables.',
-  ),
 ];
 
 class _AiSelector extends StatelessWidget {
@@ -445,6 +446,7 @@ class _AiSelector extends StatelessWidget {
     return GestureDetector(
       onTap: () => _openPicker(context),
       child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
         padding: const EdgeInsets.fromLTRB(8, 7, 14, 7),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -758,7 +760,8 @@ class _ChatCardState extends State<_ChatCard> {
     }
   }
 
-  Widget _bubble(BuildContext context, String text, {required bool isUser}) {
+  Widget _bubble(BuildContext context, String text,
+      {required bool isUser, String? speakId}) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -785,14 +788,22 @@ class _ChatCardState extends State<_ChatCard> {
           ]
               : null,
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 15,
-            color: isUser ? SaluteColors.primaryGreen : Colors.grey[800],
-            height: 1.5,
-            fontWeight: isUser ? FontWeight.w600 : FontWeight.w500,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 15,
+                color: isUser ? SaluteColors.primaryGreen : Colors.grey[800],
+                height: 1.5,
+                fontWeight: isUser ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+            if (!isUser && speakId != null)
+              SpeakButton(id: speakId, text: text, color: widget.ai.color),
+          ],
         ),
       ),
     );
@@ -945,12 +956,15 @@ class _ChatCardState extends State<_ChatCard> {
                 itemCount: itemCount,
                 itemBuilder: (context, index) {
                   if (index == 0) {
-                    return _bubble(context, _greeting, isUser: false);
+                    return _bubble(context, _greeting,
+                        isUser: false, speakId: 'ai-msg-greeting');
                   }
                   final msgIndex = index - 1;
                   if (msgIndex < messages.length) {
                     final msg = messages[msgIndex];
-                    return _bubble(context, msg.text, isUser: msg.isUser);
+                    return _bubble(context, msg.text,
+                        isUser: msg.isUser,
+                        speakId: msg.isUser ? null : 'ai-msg-$msgIndex');
                   }
                   if (_isLoading) return _loadingBubble();
                   return _bubble(context, _error!, isUser: false);
@@ -1002,6 +1016,10 @@ class _ChatCardState extends State<_ChatCard> {
                       ),
                     ),
                   ),
+                ),
+                DictationButton(
+                  controller: widget.controller,
+                  color: widget.ai.color,
                 ),
                 Padding(
                   padding: const EdgeInsets.only(right: 6),

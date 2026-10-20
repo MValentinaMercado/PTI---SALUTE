@@ -112,10 +112,7 @@ class _BiometricLockScreenState extends State<BiometricLockScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: FilledButton.icon(
+                ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 54), child: FilledButton.icon(
                     onPressed: _checking ? null : _unlock,
                     style: FilledButton.styleFrom(
                       backgroundColor: SaluteColors.primaryGreen,

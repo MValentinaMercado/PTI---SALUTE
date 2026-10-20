@@ -77,8 +77,8 @@ const List<LegalItem> kTermsItems = [
   ),
   LegalItem(
     'Inteligencia artificial y lectura automática',
-    'El chat de orientación, el índice estimado de riesgo y la lectura '
-        'automática de órdenes (OCR) son ayudas informativas: pueden '
+    'El chat de orientación y la lectura automática de órdenes (OCR) son '
+        'ayudas informativas: pueden '
         'contener errores y no constituyen un diagnóstico ni un tratamiento. '
         'Revisá siempre los datos antes de guardarlos y consultá a un '
         'profesional de la salud.',

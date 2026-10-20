@@ -8,7 +8,7 @@ import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/password_policy.dart';
 import 'package:saluteapp/legal/terms_screen.dart';
 
-const _danger = Color(0xFFE74C3C);
+const _danger = SaluteColors.danger;
 
 /// Configuración > Privacidad y Seguridad: contraseña, recuperación,
 /// cuentas vinculadas, documentos legales y eliminación de cuenta.
@@ -331,7 +331,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('REQUISITOS DE SEGURIDAD', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                                const Text('REQUISITOS DE SEGURIDAD', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                                 const SizedBox(height: 10),
                                 _Req('Al menos ${PasswordPolicy.minLength} caracteres', _okLength),
                                 _Req('Una letra mayúscula', _okUpper),
@@ -340,10 +340,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 54,
-                            child: FilledButton(
+                          ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 54), child: FilledButton(
                               onPressed: _saving ? null : _save,
                               style: FilledButton.styleFrom(
                                 backgroundColor: SaluteColors.primaryGreen,
@@ -503,14 +500,14 @@ class _Tile extends StatelessWidget {
                   children: [
                     Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: color == _danger ? _danger : Colors.black87)),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: TextStyle(fontSize: 12, height: 1.35, color: Colors.grey[600])),
+                    Text(subtitle, style: TextStyle(fontSize: 12, height: 1.35, color: SaluteColors.textMuted)),
                   ],
                 ),
               ),
               if (trailingLabel != null)
                 Text(trailingLabel!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: SaluteColors.primaryGreen))
               else if (onTap != null)
-                Icon(Icons.chevron_right, color: Colors.grey[400]),
+                Icon(Icons.chevron_right, color: SaluteColors.textMuted),
             ],
           ),
         ),
@@ -526,7 +523,7 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
+    child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
   );
 }
 
@@ -568,9 +565,9 @@ class _Req extends StatelessWidget {
     child: Row(
       children: [
         Icon(ok ? Icons.check_circle : Icons.radio_button_unchecked,
-            size: 18, color: ok ? SaluteColors.primaryGreen : Colors.grey),
+            size: 18, color: ok ? SaluteColors.primaryGreen : SaluteColors.textMuted),
         const SizedBox(width: 8),
-        Text(text, style: TextStyle(fontSize: 13, color: ok ? SaluteColors.primaryGreen : Colors.grey[700])),
+        Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: ok ? SaluteColors.primaryGreen : Colors.grey[700]))),
       ],
     ),
   );

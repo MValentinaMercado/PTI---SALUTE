@@ -106,7 +106,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const Text(
             'EMAIL',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: SaluteColors.primaryGreen,
               letterSpacing: 1,
@@ -125,7 +125,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             style: const TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               hintText: 'tu@email.com',
-              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+              hintStyle: TextStyle(color: SaluteColors.textMuted, fontSize: 15),
               errorText: _error,
               errorMaxLines: 3,
               filled: true,
@@ -144,10 +144,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 22),
           InlineErrorBanner(message: _generalError, onDismiss: () => setState(() => _generalError = null)),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton(
+          ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 56), child: FilledButton(
               onPressed: _loading ? null : _send,
               style: FilledButton.styleFrom(
                 backgroundColor: SaluteColors.primaryGreen,
@@ -189,10 +186,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             style: const TextStyle(fontSize: 14, color: Colors.black54, height: 1.4),
           ),
           const SizedBox(height: 22),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: FilledButton(
+          ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 52), child: FilledButton(
               onPressed: () => Navigator.of(context).pop(),
               style: FilledButton.styleFrom(
                 backgroundColor: SaluteColors.primaryGreen,

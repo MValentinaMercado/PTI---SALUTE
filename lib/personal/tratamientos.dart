@@ -176,7 +176,7 @@ class _Intro extends StatelessWidget {
           child: const Text(
             'SUPERVISIÓN CLÍNICA ACTIVA',
             style: TextStyle(
-              color: SaluteColors.green900,
+              color: SaluteColors.primaryGreen,
               fontSize: 10,
               fontWeight: FontWeight.w800,
               letterSpacing: .4,
@@ -275,7 +275,7 @@ class _SummaryItem extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: SaluteColors.green900,
+              color: SaluteColors.primaryGreen,
               fontSize: DsFontSize.xxl,
               fontWeight: FontWeight.w900,
             ),
@@ -307,7 +307,7 @@ class _SectionLabel extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            fontSize: DsFontSize.sectionTitle,
+            fontSize: DsFontSize.xl,
             fontWeight: DsFontWeight.w800,
             color: Colors.black87,
           ),
@@ -315,12 +315,12 @@ class _SectionLabel extends StatelessWidget {
         const SizedBox(width: 8),
         CircleAvatar(
           radius: 11,
-          backgroundColor: SaluteColors.green300,
+          backgroundColor: SaluteColors.lightGreen,
           child: Text(
             '$count',
             style: const TextStyle(
               fontSize: 11,
-              color: SaluteColors.green900,
+              color: SaluteColors.primaryGreen,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -369,7 +369,7 @@ class _TreatmentCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 6,
             children: [
-              _Tag(label: duration, color: SaluteColors.green300),
+              _Tag(label: duration, color: SaluteColors.lightGreen),
               if (medication.remindersEnabled)
                 _Tag(label: 'ALERTAS ACTIVAS', color: SaluteColors.lightGreen),
             ],
@@ -416,7 +416,7 @@ class _TreatmentCard extends StatelessWidget {
                 const Icon(
                   Icons.schedule_outlined,
                   size: 17,
-                  color: SaluteColors.green800,
+                  color: SaluteColors.darkGreen,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -437,7 +437,7 @@ class _TreatmentCard extends StatelessWidget {
               const Icon(
                 Icons.medical_services_outlined,
                 size: 16,
-                color: SaluteColors.green700,
+                color: SaluteColors.darkGreen,
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -493,7 +493,7 @@ class _HistoryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         side: BorderSide(color: Colors.grey.shade100),
       ),
-      leading: const Icon(Icons.history, color: SaluteColors.green700),
+      leading: const Icon(Icons.history, color: SaluteColors.darkGreen),
       title: Text(
         medication.name,
         style: const TextStyle(fontWeight: FontWeight.w800),
@@ -527,7 +527,7 @@ class _Tag extends StatelessWidget {
         style: const TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.w800,
-          color: SaluteColors.green900,
+          color: SaluteColors.primaryGreen,
         ),
       ),
     );
@@ -549,7 +549,7 @@ class _EmptyCard extends StatelessWidget {
         children: [
           Icon(
             Icons.medication_outlined,
-            color: SaluteColors.green600,
+            color: SaluteColors.primaryGreen,
             size: 34,
           ),
           SizedBox(height: 8),

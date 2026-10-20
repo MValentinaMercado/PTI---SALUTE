@@ -67,7 +67,7 @@ class _TermsScreenState extends State<TermsScreen> {
                   children: [
                     Text(
                       'DOCUMENTACIÓN LEGAL',
-                      style: TextStyle(fontSize: 11, letterSpacing: 1.2, color: Colors.grey[600], fontWeight: FontWeight.w700),
+                      style: TextStyle(fontSize: 12, letterSpacing: 1.2, color: SaluteColors.textMuted, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 8),
                     Semantics(
@@ -112,14 +112,11 @@ class _TermsScreenState extends State<TermsScreen> {
                     Center(
                       child: Text(
                         'Última actualización: $kLegalLastUpdate',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
                       ),
                     ),
                     const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: OutlinedButton.icon(
+                    ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 50), child: OutlinedButton.icon(
                         onPressed: _savingPdf ? null : _downloadPdf,
                         icon: _savingPdf
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
@@ -134,10 +131,7 @@ class _TermsScreenState extends State<TermsScreen> {
                     ),
                     if (widget.showAcceptButton) ...[
                       const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: FilledButton(
+                      ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 54), child: FilledButton(
                           onPressed: () => Navigator.of(context).pop(true),
                           style: FilledButton.styleFrom(
                             backgroundColor: SaluteColors.primaryGreen,
@@ -189,7 +183,7 @@ class _JumpCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Text(action, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: SaluteColors.primaryGreen)),
+                  Flexible(child: Text(action, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: SaluteColors.primaryGreen))),
                   const SizedBox(width: 4),
                   const Icon(Icons.arrow_forward, size: 16, color: SaluteColors.primaryGreen),
                 ],

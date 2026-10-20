@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:saluteapp/core/services/app_settings_service.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
@@ -117,6 +118,31 @@ class LocalAlarmService {
     return true;
   }
 
+  /// Pide el permiso de notificaciones al sistema y devuelve si quedó
+  /// permitido. Se usa al activar el switch en Configuración.
+  Future<bool> requestNotificationsPermission() async {
+    try {
+      await ensureInit();
+      if (Platform.isAndroid) {
+        final impl = _plugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        await impl?.requestNotificationsPermission();
+      } else if (Platform.isIOS) {
+        final impl = _plugin
+            .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+        await impl?.requestPermissions(alert: true, badge: true, sound: true);
+      }
+    } catch (_) {}
+    return notificationsAllowed();
+  }
+
+  /// Cancela TODAS las notificaciones pendientes (switch apagado en
+  /// Configuración).
+  Future<void> cancelAllPending() async {
+    await ensureInit();
+    await _plugin.cancelAll();
+  }
+
   /// Id numérico estable derivado del id de Firestore (los ids de
   /// notification de flutter_local_notifications son int).
   int _notifId(String eventId) => eventId.hashCode & 0x7fffffff;
@@ -168,6 +194,8 @@ class LocalAlarmService {
     bool repeatDaily = false,
   }) async {
     await ensureInit();
+    // Switch de Notificaciones apagado en Configuración: no se programa nada.
+    if (!AppSettingsService.instance.notificationsEnabled) return;
     final scheduled = tz.TZDateTime.from(when, tz.local);
 
     Future<void> go(AndroidScheduleMode mode) => _plugin.zonedSchedule(

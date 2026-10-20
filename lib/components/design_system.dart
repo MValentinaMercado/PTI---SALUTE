@@ -2,32 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:saluteapp/core/colors.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NEUTRAL COLOR TOKENS
-// (La marca sigue viviendo en SaluteColors; aquí solo van los neutros.)
-// ─────────────────────────────────────────────────────────────────────────────
-
-abstract final class DsColors {
-  /// Texto principal. Contraste ~16:1 sobre blanco.
-  static const Color textPrimary = Color(0xFF1A1D1F);
-
-  /// Texto secundario (descripciones, etiquetas). Contraste ~5.7:1 (AA).
-  static const Color textSecondary = Color(0xFF5F6670);
-
-  /// Solo para placeholders / elementos decorativos. No usar para info clave.
-  static const Color textTertiary = Color(0xFF8A919A);
-
-  static const Color surface = Colors.white;
-  static const Color border = Color(0xFFEDEFF1);
-  static const Color divider = Color(0xFFE5E7EA);
-  static const Color track = Color(0xFFE9ECEF);
-  static const Color onBrand = Colors.white;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // SPACING TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 
-abstract final class DsSpacing {
+abstract class DsSpacing {
   static const double xs = 4.0;
   static const double sm = 8.0;
   static const double md = 12.0;
@@ -39,26 +17,10 @@ abstract final class DsSpacing {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SIZE TOKENS
-// ─────────────────────────────────────────────────────────────────────────────
-
-abstract final class DsSizes {
-  /// Área táctil mínima recomendada (Material / WCAG).
-  static const double tapTarget = 48.0;
-  static const double buttonHeight = 56.0;
-  static const double iconSm = 16.0;
-  static const double iconMd = 20.0;
-  static const double iconLg = 24.0;
-
-  /// Ancho máximo del contenido en pantallas anchas (tablet / web).
-  static const double maxContentWidth = 640.0;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // BORDER RADIUS TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 
-abstract final class DsBorderRadius {
+abstract class DsBorderRadius {
   static const double sm = 8.0;
   static const double md = 12.0;
   static const double lg = 16.0;
@@ -68,49 +30,49 @@ abstract final class DsBorderRadius {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SHADOW TOKENS (const: no se reconstruyen en cada build)
+// SHADOW TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 
-abstract final class DsShadow {
-  static const List<BoxShadow> sm = [
-    BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 2)),
+abstract class DsShadow {
+  static final List<BoxShadow> sm = [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.04),
+      blurRadius: 4,
+      offset: const Offset(0, 2),
+    ),
   ];
 
-  static const List<BoxShadow> md = [
-    BoxShadow(color: Color(0x0F000000), blurRadius: 8, offset: Offset(0, 4)),
+  static final List<BoxShadow> md = [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.06),
+      blurRadius: 8,
+      offset: const Offset(0, 4),
+    ),
   ];
 
-  static const List<BoxShadow> lg = [
-    BoxShadow(color: Color(0x1A000000), blurRadius: 16, offset: Offset(0, 8)),
+  static final List<BoxShadow> lg = [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.1),
+      blurRadius: 16,
+      offset: const Offset(0, 8),
+    ),
   ];
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MOTION TOKENS
-// ─────────────────────────────────────────────────────────────────────────────
-
-abstract final class DsMotion {
-  static const Duration fast = Duration(milliseconds: 150);
-  static const Duration normal = Duration(milliseconds: 250);
-  static const Duration slow = Duration(milliseconds: 400);
-  static const Curve curve = Curves.easeOutCubic;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FONT SIZE TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 
-abstract final class DsFontSize {
-  static const double xs = 10.0; // solo para badges muy compactos
-  static const double sm = 11.0;
+abstract class DsFontSize {
+  static const double xs = 12.0;
+  static const double sm = 12.0;
   static const double base = 12.0;
   static const double md = 13.0;
   static const double lg = 14.0;
   static const double xl = 16.0;
   static const double xxl = 18.0;
-  static const double sectionTitle = 20.0;
+  static const double display = 26.0;
   static const double h4 = 24.0;
-  static const double display = 28.0;
   static const double h3 = 28.0;
   static const double h2 = 32.0;
 }
@@ -119,7 +81,7 @@ abstract final class DsFontSize {
 // FONT WEIGHT TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 
-abstract final class DsFontWeight {
+abstract class DsFontWeight {
   static const FontWeight w500 = FontWeight.w500;
   static const FontWeight w600 = FontWeight.w600;
   static const FontWeight w700 = FontWeight.w700;
@@ -131,7 +93,7 @@ abstract final class DsFontWeight {
 // LINE HEIGHT TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 
-abstract final class DsLineHeight {
+abstract class DsLineHeight {
   static const double tight = 1.1;
   static const double normal = 1.4;
   static const double relaxed = 1.6;
@@ -141,132 +103,68 @@ abstract final class DsLineHeight {
 // TEXT STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 
-abstract final class DsTextStyles {
-  static const TextStyle display = TextStyle(
-    fontSize: DsFontSize.display,
-    fontWeight: DsFontWeight.w800,
-    color: DsColors.textPrimary,
-    height: DsLineHeight.tight,
-    letterSpacing: -0.5,
-  );
-
+abstract class DsTextStyles {
   static const TextStyle heading1 = TextStyle(
     fontSize: DsFontSize.h2,
-    fontWeight: DsFontWeight.w800,
-    color: DsColors.textPrimary,
+    fontWeight: DsFontWeight.w900,
+    color: Colors.black87,
     height: DsLineHeight.tight,
-    letterSpacing: -0.5,
   );
 
   static const TextStyle heading2 = TextStyle(
     fontSize: DsFontSize.h3,
-    fontWeight: DsFontWeight.w800,
-    color: DsColors.textPrimary,
+    fontWeight: DsFontWeight.w900,
+    color: Colors.black87,
     height: DsLineHeight.tight,
-    letterSpacing: -0.4,
   );
 
   static const TextStyle heading3 = TextStyle(
     fontSize: DsFontSize.h4,
     fontWeight: DsFontWeight.w800,
-    color: DsColors.textPrimary,
+    color: Colors.black87,
     height: DsLineHeight.normal,
-    letterSpacing: -0.3,
-  );
-
-  /// Títulos de sección y de estados vacíos.
-  static const TextStyle title = TextStyle(
-    fontSize: DsFontSize.sectionTitle,
-    fontWeight: DsFontWeight.w800,
-    color: DsColors.textPrimary,
-    height: DsLineHeight.normal,
-    letterSpacing: -0.2,
   );
 
   static const TextStyle bodyLarge = TextStyle(
     fontSize: DsFontSize.lg,
-    fontWeight: DsFontWeight.w600,
-    color: DsColors.textPrimary,
+    fontWeight: DsFontWeight.w500,
+    color: Colors.black87,
     height: DsLineHeight.normal,
   );
 
   static const TextStyle bodyMedium = TextStyle(
     fontSize: DsFontSize.md,
     fontWeight: DsFontWeight.w500,
-    color: DsColors.textPrimary,
+    color: Colors.black87,
     height: DsLineHeight.normal,
   );
 
   static const TextStyle bodySmall = TextStyle(
-    fontSize: DsFontSize.base,
+    fontSize: DsFontSize.sm,
     fontWeight: DsFontWeight.w500,
-    color: DsColors.textPrimary,
+    color: Colors.black87,
     height: DsLineHeight.normal,
   );
 
   static const TextStyle labelLarge = TextStyle(
     fontSize: DsFontSize.md,
     fontWeight: DsFontWeight.w700,
-    color: DsColors.textPrimary,
-    letterSpacing: 0.3,
+    color: Colors.black87,
+    letterSpacing: 0.5,
   );
 
   static const TextStyle labelSmall = TextStyle(
-    fontSize: DsFontSize.sm,
+    fontSize: DsFontSize.xs,
     fontWeight: DsFontWeight.w700,
-    color: DsColors.textSecondary,
+    color: Color(0xFF5F6368), // textMuted (AA)
     letterSpacing: 0.8,
   );
 
   static const TextStyle caption = TextStyle(
-    fontSize: DsFontSize.sm,
+    fontSize: DsFontSize.xs,
     fontWeight: DsFontWeight.w500,
-    color: DsColors.textSecondary,
+    color: Color(0xFF666666),
   );
-
-  static const TextStyle button = TextStyle(
-    fontSize: DsFontSize.lg,
-    fontWeight: DsFontWeight.w800,
-    letterSpacing: 0.3,
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SECTION TITLE (con barra de acento)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class DsSectionTitle extends StatelessWidget {
-  final String title;
-
-  const DsSectionTitle({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      header: true,
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 24,
-            decoration: BoxDecoration(
-              color: SaluteColors.primaryGreen,
-              borderRadius: BorderRadius.circular(DsBorderRadius.circle),
-            ),
-          ),
-          const SizedBox(width: DsSpacing.md),
-          Flexible(
-            child: Text(
-              title,
-              style: DsTextStyles.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -281,41 +179,27 @@ class DsCard extends StatelessWidget {
   final Border? border;
   final List<BoxShadow>? boxShadow;
 
-  /// Si se define, la tarjeta es interactiva (ripple + foco + semántica).
-  final VoidCallback? onTap;
-
   const DsCard({
-    super.key,
+    Key? key,
     required this.child,
     this.padding,
     this.backgroundColor,
     this.borderRadius,
     this.border,
     this.boxShadow,
-    this.onTap,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(borderRadius ?? DsBorderRadius.xl);
-    final content = Padding(
+    return Container(
       padding: padding ?? const EdgeInsets.all(DsSpacing.lg),
-      child: child,
-    );
-
-    return DecoratedBox(
       decoration: BoxDecoration(
-        color: backgroundColor ?? DsColors.surface,
-        borderRadius: radius,
-        border: border ?? Border.all(color: DsColors.border),
+        color: backgroundColor ?? Colors.white,
+        borderRadius: BorderRadius.circular(borderRadius ?? DsBorderRadius.xl),
+        border: border ?? Border.all(color: Colors.grey.shade100),
         boxShadow: boxShadow ?? DsShadow.sm,
       ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: onTap == null
-            ? content
-            : InkWell(onTap: onTap, borderRadius: radius, child: content),
-      ),
+      child: child,
     );
   }
 }
@@ -326,82 +210,55 @@ class DsCard extends StatelessWidget {
 
 class DsButtonPrimary extends StatelessWidget {
   final String label;
-
-  /// `null` deshabilita el botón.
-  final VoidCallback? onPressed;
+  final VoidCallback onPressed;
   final IconData? icon;
   final Color? color;
   final double? height;
 
-  /// Muestra un spinner y bloquea la interacción.
-  final bool isLoading;
-
-  /// Ocupa todo el ancho disponible.
-  final bool expand;
-
   const DsButtonPrimary({
-    super.key,
+    Key? key,
     required this.label,
     required this.onPressed,
     this.icon,
     this.color,
     this.height,
-    this.isLoading = false,
-    this.expand = true,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final base = color ?? SaluteColors.primaryGreen;
-    final enabled = onPressed != null && !isLoading;
-
-    return SizedBox(
-      width: expand ? double.infinity : null,
-      height: height ?? DsSizes.buttonHeight,
+    // Altura mínima (no fija): con texto grande la etiqueta puede pasar a dos
+    // líneas y el botón crece en vez de desbordarse.
+    return ConstrainedBox(
+      constraints: BoxConstraints(minWidth: double.infinity, minHeight: height ?? 56),
       child: FilledButton(
-        onPressed: enabled ? onPressed : null,
+        onPressed: onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: base,
-          foregroundColor: DsColors.onBrand,
-          disabledBackgroundColor: base.withValues(alpha: 0.35),
-          disabledForegroundColor: DsColors.onBrand.withValues(alpha: 0.85),
-          padding: const EdgeInsets.symmetric(horizontal: DsSpacing.xxl),
+          backgroundColor: color ?? SaluteColors.primaryGreen,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(DsBorderRadius.lg),
           ),
           elevation: 0,
         ),
-        child: AnimatedSwitcher(
-          duration: DsMotion.fast,
-          child: isLoading
-              ? const SizedBox(
-                  key: ValueKey('loading'),
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: DsColors.onBrand,
-                  ),
-                )
-              : Row(
-                  key: const ValueKey('label'),
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, size: DsSizes.iconMd),
-                      const SizedBox(width: DsSpacing.md),
-                    ],
-                    Flexible(
-                      child: Text(
-                        label,
-                        style: DsTextStyles.button,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: DsSpacing.lg),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: DsFontSize.lg,
+                  fontWeight: DsFontWeight.w800,
+                  letterSpacing: 0.5,
                 ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -414,57 +271,44 @@ class DsButtonPrimary extends StatelessWidget {
 
 class DsButtonSecondary extends StatelessWidget {
   final String label;
-  final VoidCallback? onPressed;
+  final VoidCallback onPressed;
   final IconData? icon;
   final Color? color;
-  final bool expand;
 
   const DsButtonSecondary({
-    super.key,
+    Key? key,
     required this.label,
     required this.onPressed,
     this.icon,
     this.color,
-    this.expand = false,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final base = color ?? SaluteColors.primaryGreen;
-
     return OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        foregroundColor: base,
-        minimumSize: Size(expand ? double.infinity : 0, DsSizes.tapTarget),
-        padding: const EdgeInsets.symmetric(
-          horizontal: DsSpacing.xl,
-          vertical: DsSpacing.md,
-        ),
-        side: BorderSide(
-          color: onPressed == null ? base.withValues(alpha: 0.3) : base,
-          width: 1.5,
-        ),
+        side: BorderSide(color: color ?? SaluteColors.primaryGreen),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DsBorderRadius.lg),
         ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: DsSizes.iconMd),
+            Icon(icon, color: color ?? SaluteColors.primaryGreen, size: 20),
             const SizedBox(width: DsSpacing.md),
           ],
           Flexible(
             child: Text(
               label,
-              style: DsTextStyles.button.copyWith(
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: color ?? SaluteColors.primaryGreen,
+                fontSize: DsFontSize.lg,
                 fontWeight: DsFontWeight.w700,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -485,26 +329,28 @@ class DsIconContainer extends StatelessWidget {
   final double borderRadius;
 
   const DsIconContainer({
-    super.key,
+    Key? key,
     required this.icon,
     required this.iconColor,
     required this.backgroundColor,
     this.size = 40,
     this.borderRadius = DsBorderRadius.md,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(borderRadius),
-        ),
-        child: Center(
-          child: Icon(icon, color: iconColor, size: size * 0.5),
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+      child: Center(
+        child: Icon(
+          icon,
+          color: iconColor,
+          size: size * 0.55,
         ),
       ),
     );
@@ -522,30 +368,30 @@ class DsBadge extends StatelessWidget {
   final double? padding;
 
   const DsBadge({
-    super.key,
+    Key? key,
     required this.label,
     required this.backgroundColor,
     required this.labelColor,
     this.padding,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: padding ?? DsSpacing.md,
-        vertical: DsSpacing.xs,
+        vertical: DsSpacing.sm * 0.5,
       ),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(DsBorderRadius.circle),
+        borderRadius: BorderRadius.circular(DsBorderRadius.lg),
       ),
       child: Text(
         label,
-        maxLines: 1,
+        maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          fontSize: DsFontSize.sm,
+          fontSize: DsFontSize.xs,
           fontWeight: DsFontWeight.w700,
           color: labelColor,
         ),
@@ -562,12 +408,16 @@ class DsDivider extends StatelessWidget {
   final Color? color;
   final double? height;
 
-  const DsDivider({super.key, this.color, this.height});
+  const DsDivider({
+    Key? key,
+    this.color,
+    this.height,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Divider(
-      color: color ?? DsColors.divider,
+      color: color ?? Colors.grey.shade200,
       height: height ?? DsSpacing.lg,
       thickness: 1,
     );
@@ -575,7 +425,7 @@ class DsDivider extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROGRESS BAR COMPONENT (animada)
+// PROGRESS BAR COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
 class DsProgressBar extends StatelessWidget {
@@ -585,33 +435,23 @@ class DsProgressBar extends StatelessWidget {
   final double height;
 
   const DsProgressBar({
-    super.key,
+    Key? key,
     required this.value,
     this.backgroundColor,
     this.valueColor,
-    this.height = 6,
-  });
+    this.height = 5,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final target = value.clamp(0.0, 1.0);
-
-    return Semantics(
-      value: '${(target * 100).round()}%',
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: 0, end: target),
-        duration: DsMotion.slow,
-        curve: DsMotion.curve,
-        builder: (context, animated, _) => ClipRRect(
-          borderRadius: BorderRadius.circular(DsBorderRadius.circle),
-          child: LinearProgressIndicator(
-            value: animated,
-            minHeight: height,
-            backgroundColor: backgroundColor ?? DsColors.track,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              valueColor ?? SaluteColors.primaryGreen,
-            ),
-          ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(DsBorderRadius.sm),
+      child: LinearProgressIndicator(
+        value: value,
+        minHeight: height,
+        backgroundColor: backgroundColor ?? Colors.grey.shade200,
+        valueColor: AlwaysStoppedAnimation<Color>(
+          valueColor ?? SaluteColors.primaryGreen,
         ),
       ),
     );
@@ -631,40 +471,34 @@ class DsSegmentedBar extends StatelessWidget {
   final double spacing;
 
   const DsSegmentedBar({
-    super.key,
+    Key? key,
     required this.activeSegments,
     required this.totalSegments,
     this.activeColor,
     this.inactiveColor,
     this.height = 6,
     this.spacing = 4,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      value: '$activeSegments/$totalSegments',
-      child: Row(
-        children: List.generate(totalSegments, (i) {
-          final isActive = i < activeSegments;
-          return Expanded(
-            child: AnimatedContainer(
-              duration: DsMotion.normal,
-              curve: DsMotion.curve,
-              height: height,
-              margin: EdgeInsets.only(
-                right: i < totalSegments - 1 ? spacing : 0,
-              ),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? (activeColor ?? SaluteColors.primaryGreen)
-                    : (inactiveColor ?? DsColors.track),
-                borderRadius: BorderRadius.circular(DsBorderRadius.circle),
-              ),
+    return Row(
+      children: List.generate(totalSegments, (i) {
+        final isActive = i < activeSegments;
+        return Expanded(
+          child: Container(
+            height: height,
+            margin: EdgeInsets.only(right: i < totalSegments - 1 ? spacing : 0),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? (activeColor ?? SaluteColors.primaryGreen)
+                  : (inactiveColor ?? Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(DsBorderRadius.sm),
             ),
-          );
-        }),
-      ),
+          ),
+        );
+      }),
     );
   }
 }
+

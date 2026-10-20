@@ -3,32 +3,28 @@ import 'package:flutter/material.dart';
 class SaluteColors {
   SaluteColors._();
 
-  // Brand palette: deep forest greens through soft mint surfaces.
-  static const green950 = Color(0xFF00391F);
-  static const green900 = Color(0xFF00522F);
-  static const green800 = Color(0xFF086C41);
-  static const green700 = Color(0xFF2F8658);
-  static const green600 = Color(0xFF4CA170);
-  static const green500 = Color(0xFF67BC89);
-  static const green400 = Color(0xFF83D8A3);
-  static const green300 = Color(0xFF9EF5BE);
-  static const green200 = Color(0xFFC1FFD4);
+  static const primaryGreen  = Color(0xFF1A5C3A);
+  /// Oscurecido (antes 0xFF2E7D52, 3,7:1 sobre lightBrown / 4,2:1 sobre lightGreen)
+  /// para que el texto y los íconos cumplan AA sobre los fondos tintados.
+  static const darkGreen     = Color(0xFF236B46);
+  static const lightGreen    = Color(0xFFD6F0E0);
+  static const bgColor       = Color(0xFFF8F8F8);
+  /// Oscurecido (antes 0xFFB35C2E, 3,4:1 sobre lightBrown / 4,4:1 sobre bgColor).
+  static const brownOrange   = Color(0xFF974620);
+  static const lightBrown    = Color(0xFFF5D6C8);
+  static const terracotta    = Color(0xFF8B3A1A);
+  static const cardBeige     = Color(0xFFF5EDE4);
 
-  static const primaryGreen = green900;
-  static const darkGreen = green950;
-  static const lightGreen = green200;
-  static const bgColor = Color(0xFFF7FAF8);
+  /// Gris para texto secundario y hints. Cumple WCAG AA (>= 4,5:1) sobre
+  /// blanco (6,05), bgColor (5,70), lightGreen (5,01) y cardBeige (5,22).
+  /// Reemplaza a Colors.grey[400..600], que sobre blanco dan 1,9 a 4,6:1.
+  static const textMuted     = Color(0xFF5F6368);
 
-  // Semantic accents are intentionally separate from the brand greens.
-  static const success = green700;
-  static const warning = Color(0xFFD9822B);
-  static const alert = Color(0xFFC0392B);
-  static const urgent = Color(0xFF9E1B32);
-  static const info = Color(0xFF2878A6);
-
-  // Legacy aliases retained for existing profile and map surfaces.
-  static const brownOrange = Color(0xFFB35C2E);
-  static const lightBrown = Color(0xFFF5D6C8);
-  static const terracotta = Color(0xFF8B3A1A);
-  static const cardBeige = Color(0xFFF5EDE4);
+  /// Estados. Todos cumplen WCAG AA (>= 4,5:1) como texto/ícono sobre blanco
+  /// (warning 5,34 · danger 5,62) y sobre bgColor (5,03 · 5,29), y como fondo
+  /// con texto blanco encima. Reemplazan a Colors.orange / red / redAccent,
+  /// que dan 2,2 a 3,7:1. Nunca deben ser la ÚNICA señal: ir siempre con
+  /// texto o ícono.
+  static const warning       = Color(0xFFA85400);
+  static const danger        = Color(0xFFC62828);
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:saluteapp/components/voice_buttons.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/family_profile.dart';
 import 'package:saluteapp/core/models/vaccine_record.dart';
@@ -276,7 +277,7 @@ class _VaccineFormScreenState extends State<VaccineFormScreen> {
                           'puede cambiar según la edad y el esquema de ${widget.profile.name}.'
                       : 'Fecha sugerida según el Calendario Nacional. Confirmala con tu médico o en el '
                           'vacunatorio: puede cambiar según los antecedentes y el esquema de ${widget.profile.name}.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
                 ),
               ),
             if (_next != null)
@@ -308,15 +309,24 @@ class _VaccineFormScreenState extends State<VaccineFormScreen> {
             const VaccineLabel('Notas (opcional)'),
             TextField(
               controller: _notesCtrl,
-              maxLines: 3,
+              minLines: 3,
+              maxLines: 6,
+              keyboardType: TextInputType.multiline,
+              textCapitalization: TextCapitalization.sentences,
               decoration: vaccineInputDecoration(
                 _isPet ? 'Reacciones, indicaciones del veterinario...' : 'Reacciones, indicaciones del médico...',
+              ).copyWith(
+                // Dictado por voz: es el único campo de texto largo del formulario.
+                suffixIcon: Align(
+                  alignment: Alignment.topRight,
+                  widthFactor: 1,
+                  heightFactor: 1,
+                  child: DictationButton(controller: _notesCtrl),
+                ),
               ),
             ),
             const SizedBox(height: 28),
-            SizedBox(
-              height: 52,
-              child: ElevatedButton(
+            ConstrainedBox(constraints: const BoxConstraints(minHeight: 52), child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: SaluteColors.primaryGreen,

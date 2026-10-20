@@ -8,6 +8,9 @@ import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/vital_entry.dart';
 import 'package:saluteapp/core/services/health_service.dart';
 import 'package:saluteapp/core/services/vitals_service.dart';
+import 'package:saluteapp/components/ai_insight_card.dart';
+import 'package:saluteapp/core/services/ai_insight_service.dart';
+import 'package:saluteapp/core/services/health_red_flags.dart';
 
 String _timeSince(DateTime date) {
   final diff = DateTime.now().difference(date);
@@ -19,7 +22,7 @@ String _timeSince(DateTime date) {
 /// Combina los registros (más reciente primero) tomando, para cada métrica,
 /// el último valor NO nulo. Así un registro del reloj sin peso/estrés no
 /// "borra" el peso o estrés cargado a mano antes.
-VitalEntry? _mergeLatest(List<VitalEntry> entries) {
+VitalEntry? mergeLatestVitalEntries(List<VitalEntry> entries) {
   if (entries.isEmpty) return null;
 
   T? pick<T>(T? Function(VitalEntry) f) {
@@ -44,6 +47,53 @@ VitalEntry? _mergeLatest(List<VitalEntry> entries) {
     calories: pick<int>((e) => e.calories),
     stressLevel: pick<StressLevel>((e) => e.stressLevel),
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATOS PARA LA ORIENTACIÓN DE IA
+// ─────────────────────────────────────────────────────────────────────────────
+
+int _aiMetricCount(VitalEntry? e) => e == null
+    ? 0
+    : [
+  e.heartRate,
+  e.bloodOxygen,
+  e.sleepHours,
+  e.weightKg,
+  e.steps,
+  e.calories,
+  e.stressLevel,
+].where((v) => v != null).length;
+
+/// Con al menos 2 métricas cargadas ya hay algo que analizar.
+bool _aiReady(VitalEntry? latest) => _aiMetricCount(latest) >= 2;
+
+Map<String, dynamic> _buildAiData(
+    List<VitalEntry> entries,
+    VitalEntry? latest,
+    ) {
+  return AiPayload.clean({
+    'objetivo': 'Interpretar tendencias y relaciones entre las métricas. '
+        'No repetir un estado fijo ni emitir diagnósticos.',
+    'ultimoValor': {
+      'frecuenciaCardiacaBpm': latest?.heartRate,
+      'oxigenoPct': latest?.bloodOxygen,
+      'suenoHoras': latest?.sleepHours,
+      'pesoKg': latest?.weightKg,
+      'pasos': latest?.steps,
+      'caloriasActivas': latest?.calories,
+      'estres': latest?.stressLevel?.name,
+    },
+    'ultimos7Dias_masViejoPrimero': {
+      'frecuenciaCardiacaBpm': _series(entries, (e) => e.heartRate?.toDouble()),
+      'oxigenoPct': _series(entries, (e) => e.bloodOxygen),
+      'suenoHoras': _series(entries, (e) => e.sleepHours),
+      'pesoKg': _series(entries, (e) => e.weightKg),
+      'pasos': _series(entries, (e) => e.steps?.toDouble()),
+      'caloriasActivas': _series(entries, (e) => e.calories?.toDouble()),
+      'estres': _stressSeries(entries),
+    },
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,7 +180,7 @@ class _BiometricsScreenState extends State<BiometricsScreen> {
         if (!authorized) {
           _snack(
             'No se otorgó ningún permiso de salud (o falta instalar Health Connect).',
-            SaluteColors.urgent,
+            SaluteColors.danger,
           );
           return;
         }
@@ -220,7 +270,7 @@ class _BiometricsScreenState extends State<BiometricsScreen> {
     } catch (error) {
       if (!silent) {
         _snack('No se pudo sincronizar el smartwatch: $error',
-            SaluteColors.urgent);
+            SaluteColors.danger);
       }
     } finally {
       if (mounted) setState(() => _syncing = false);
@@ -286,7 +336,7 @@ class _BiometricsScreenState extends State<BiometricsScreen> {
                   }
                   final entries = snapshot.data ?? [];
                   // Último valor disponible de cada métrica (manual o reloj).
-                  final latest = _mergeLatest(entries);
+                  final latest = mergeLatestVitalEntries(entries);
 
                   return SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(
@@ -311,7 +361,23 @@ class _BiometricsScreenState extends State<BiometricsScreen> {
                         const SizedBox(height: DsSpacing.xl),
                         _StressCard(latest: latest),
                         const SizedBox(height: DsSpacing.xl),
-                        _RecommendationCard(latest: latest),
+                        AiInsightCard(
+                          key: ValueKey('ai-metricas-${widget.profileId}'),
+                          kind: 'metricas',
+                          profileId: widget.profileId,
+                          subject: const {
+                            'tipo': 'persona',
+                            'enfoque': 'tendencias_y_contexto',
+                          },
+                          buildData: () => _buildAiData(entries, latest),
+                          redFlags: HealthRedFlags.vitals(
+                            heartRate: latest?.heartRate?.toDouble(),
+                            oxygenSat: latest?.bloodOxygen,
+                          ),
+                          ready: _aiReady(latest),
+                          notReadyHint:
+                              'Registrá o sincronizá al menos dos métricas para poder analizar.',
+                        ),
                         const SizedBox(height: DsSpacing.xxl),
                       ],
                     ),
@@ -332,19 +398,68 @@ class _BiometricsScreenState extends State<BiometricsScreen> {
 
 enum _HealthStatus { optima, atencion, sinDatos }
 
-_HealthStatus _computeStatus(VitalEntry? e) {
-  if (e == null) return _HealthStatus.sinDatos;
-  var concerns = 0;
-  if (e.heartRate != null && (e.heartRate! < 55 || e.heartRate! > 100)) {
-    concerns++;
+class _HealthEvaluation {
+  final _HealthStatus status;
+  final int available;
+  final List<String> concerns;
+
+  const _HealthEvaluation({
+    required this.status,
+    required this.available,
+    required this.concerns,
+  });
+}
+
+_HealthEvaluation _evaluateHealth(VitalEntry? e) {
+  if (e == null) {
+    return const _HealthEvaluation(
+      status: _HealthStatus.sinDatos,
+      available: 0,
+      concerns: [],
+    );
   }
-  if (e.sleepHours != null && e.sleepHours! < 6) {
-    concerns++;
+
+  final concerns = <String>[];
+  var available = 0;
+
+  if (e.heartRate != null) {
+    available++;
+    if (e.heartRate! < 55 || e.heartRate! > 100) {
+      concerns.add('frecuencia cardíaca fuera del rango de referencia');
+    }
   }
-  if (e.stressLevel == StressLevel.alto) {
-    concerns++;
+  if (e.bloodOxygen != null) {
+    available++;
+    if (e.bloodOxygen! < 95) {
+      concerns.add('saturación de oxígeno menor al valor esperado');
+    }
   }
-  return concerns > 0 ? _HealthStatus.atencion : _HealthStatus.optima;
+  if (e.sleepHours != null) {
+    available++;
+    if (e.sleepHours! < 6 || e.sleepHours! > 12) {
+      concerns.add('horas de sueño fuera del rango orientativo');
+    }
+  }
+  if (e.weightKg != null) {
+    available++;
+    if (e.weightKg! <= 0) {
+      concerns.add('peso inválido');
+    }
+  }
+  if (e.steps != null) available++;
+  if (e.calories != null) available++;
+  if (e.stressLevel != null) {
+    available++;
+    if (e.stressLevel == StressLevel.alto) {
+      concerns.add('nivel de estrés alto');
+    }
+  }
+
+  return _HealthEvaluation(
+    status: concerns.isEmpty ? _HealthStatus.optima : _HealthStatus.atencion,
+    available: available,
+    concerns: concerns,
+  );
 }
 
 class HealthStatusCard extends StatelessWidget {
@@ -355,7 +470,8 @@ class HealthStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = _computeStatus(latest);
+    final evaluation = _evaluateHealth(latest);
+    final status = evaluation.status;
     final String headline = switch (status) {
       _HealthStatus.optima => 'Salud General:\nÓptima',
       _HealthStatus.atencion => 'Salud General:\nRequiere atención',
@@ -364,10 +480,13 @@ class HealthStatusCard extends StatelessWidget {
     final String subtitle = switch (status) {
       _HealthStatus.optima => 'Tus últimos registros están en rangos normales.',
       _HealthStatus.atencion =>
-      'Algún valor de tu último registro está fuera de rango. Revisalo con calma.',
+      '${evaluation.concerns.join(', ')}. Revisalo con calma.',
       _HealthStatus.sinDatos =>
       'Todavía no hay datos. Tocá "Vincular wearable" o "Registrar" para empezar.',
     };
+    final coverage = status == _HealthStatus.sinDatos
+        ? ''
+        : ' ${evaluation.available} de 7 métricas disponibles fueron revisadas.';
 
     final card = Container(
       width: double.infinity,
@@ -407,7 +526,7 @@ class HealthStatusCard extends StatelessWidget {
                 ),
                 const SizedBox(height: DsSpacing.lg),
                 Text(
-                  subtitle,
+                  '$subtitle$coverage',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.65),
                     fontSize: DsFontSize.md,
@@ -540,6 +659,17 @@ List<double?> _series(
     if (v == null) continue;
     final d = DateTime(e.date.year, e.date.month, e.date.day);
     porDia.putIfAbsent(d, () => v); // el primero es el más reciente
+  }
+  return _last7Days().map((d) => porDia[d]).toList();
+}
+
+List<String?> _stressSeries(List<VitalEntry> entries) {
+  final porDia = <DateTime, String>{};
+  for (final e in entries) {
+    final stress = e.stressLevel;
+    if (stress == null) continue;
+    final d = DateTime(e.date.year, e.date.month, e.date.day);
+    porDia.putIfAbsent(d, () => stress.name);
   }
   return _last7Days().map((d) => porDia[d]).toList();
 }
@@ -953,81 +1083,6 @@ class _StressCard extends StatelessWidget {
           DsSegmentedBar(
             activeSegments: level != null ? _segments[level]! : 0,
             totalSegments: 4,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// RECOMMENDATION CARD (regla simple sobre datos reales, no IA)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _RecommendationCard extends StatelessWidget {
-  final VitalEntry? latest;
-  const _RecommendationCard({required this.latest});
-
-  String get _text {
-    if (latest == null) {
-      return 'Vinculá tu smartwatch o registrá tu primer chequeo (frecuencia cardíaca, sueño, peso o estrés) para empezar a ver recomendaciones basadas en tus datos.';
-    }
-    if (latest!.stressLevel == StressLevel.alto) {
-      return 'Tu último registro marca estrés alto. Una pausa corta y consciente (respiración, caminar unos minutos) puede ayudar antes de seguir con el día.';
-    }
-    if (latest!.sleepHours != null && latest!.sleepHours! < 6) {
-      return 'Dormiste menos de 6 horas en tu último registro. Priorizar el descanso hoy puede ayudar a recuperar el ritmo.';
-    }
-    if (latest!.stressLevel == StressLevel.bajo) {
-      return 'Tu nivel de estrés está bajo. Buen momento para mantener la rutina que te está funcionando.';
-    }
-    return 'Seguí registrando tus métricas regularmente para detectar patrones y tendencias con más precisión.';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return DsCard(
-      backgroundColor: SaluteColors.lightGreen.withValues(alpha: 0.3),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.lightbulb_outline,
-              color: SaluteColors.primaryGreen,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: DsSpacing.lg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Recomendación',
-                  style: TextStyle(
-                    fontSize: DsFontSize.lg,
-                    fontWeight: DsFontWeight.w800,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: DsSpacing.md),
-                Text(
-                  _text,
-                  style: TextStyle(
-                    fontSize: DsFontSize.md,
-                    color: Colors.grey.shade600,
-                    height: DsLineHeight.relaxed,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),

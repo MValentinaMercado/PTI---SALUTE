@@ -1,8 +1,11 @@
+import 'package:saluteapp/components/text_scale.dart';
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:saluteapp/core/services/app_settings_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:saluteapp/core/colors.dart';
@@ -252,6 +255,15 @@ class _SaluteMapScreenState extends State<SaluteMapScreen> {
   }
 
   Future<void> _initLocation() async {
+    if (!AppSettingsService.instance.locationEnabled) {
+      if (!mounted) return;
+      setState(() {
+        _loadingLocation = false;
+        _hasLocationPermission = false;
+        _error = 'Los Servicios de Ubicación están desactivados en Configuración.';
+      });
+      return;
+    }
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -630,13 +642,15 @@ class _SaluteMapScreenState extends State<SaluteMapScreen> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Text(
-                          _loadingLocation
-                              ? 'Obteniendo ubicación...'
-                              : 'Buscando servicios cercanos...',
-                          style: const TextStyle(
-                            fontSize: DsFontSize.md,
-                            fontWeight: DsFontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            _loadingLocation
+                                ? 'Obteniendo ubicación...'
+                                : 'Buscando servicios cercanos...',
+                            style: const TextStyle(
+                              fontSize: DsFontSize.md,
+                              fontWeight: DsFontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -711,7 +725,7 @@ class _FloatingAppBar extends StatelessWidget {
     return Row(
       children: [
         // Botón atrás
-        _MapButton(icon: Icons.arrow_back, onTap: onBack),
+        _MapButton(icon: Icons.arrow_back, label: 'Volver', onTap: onBack),
         const SizedBox(width: 10),
         // Título centrado
         Expanded(
@@ -737,7 +751,7 @@ class _FloatingAppBar extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         // Botón mi ubicación
-        _MapButton(icon: Icons.my_location, onTap: onMyLocation),
+        _MapButton(icon: Icons.my_location, label: 'Ir a mi ubicación', onTap: onMyLocation),
       ],
     );
   }
@@ -747,11 +761,13 @@ class _MapButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _MapButton({required this.icon, required this.onTap});
+  final String label;
+  const _MapButton({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return A11yTap(
+      label: label,
       onTap: onTap,
       child: Container(
         width: 44,
@@ -781,7 +797,7 @@ class _CategoryFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 54,
+      height: scaledHeight(context, 54),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(
@@ -858,9 +874,9 @@ class _MapControls extends StatelessWidget {
           boxShadow: DsShadow.md,
           child: Column(
             children: [
-              _ControlButton(icon: Icons.add, onTap: onZoomIn),
+              _ControlButton(icon: Icons.add, label: 'Acercar el mapa', onTap: onZoomIn),
               Container(height: 1, width: 28, color: SaluteColors.bgColor),
-              _ControlButton(icon: Icons.remove, onTap: onZoomOut),
+              _ControlButton(icon: Icons.remove, label: 'Alejar el mapa', onTap: onZoomOut),
             ],
           ),
         ),
@@ -871,6 +887,7 @@ class _MapControls extends StatelessWidget {
           boxShadow: DsShadow.md,
           child: _ControlButton(
             icon: Icons.gps_fixed,
+            label: 'Centrar el mapa en mi ubicación',
             onTap: onLocate,
             color: SaluteColors.primaryGreen,
           ),
@@ -882,11 +899,13 @@ class _MapControls extends StatelessWidget {
 
 class _ControlButton extends StatelessWidget {
   final IconData icon;
+  final String label;
   final VoidCallback onTap;
   final Color color;
 
   const _ControlButton({
     required this.icon,
+    required this.label,
     required this.onTap,
     this.color = Colors.black45,
   });
@@ -895,6 +914,7 @@ class _ControlButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onTap,
+      tooltip: label,
       icon: Icon(icon, color: color, size: 25),
       constraints: const BoxConstraints.tightFor(width: 56, height: 56),
       padding: EdgeInsets.zero,
@@ -941,7 +961,8 @@ class _PlaceDetailSheet extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                GestureDetector(
+                A11yTap(
+                  label: 'Cerrar detalle del lugar',
                   onTap: onClose,
                   child: Container(
                     width: 34,
@@ -962,7 +983,7 @@ class _PlaceDetailSheet extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                DsBadge(
+                Flexible(child: DsBadge(
                   label: place.isOpen ? 'ABIERTO AHORA' : 'CERRADO',
                   backgroundColor: place.isOpen
                       ? SaluteColors.lightGreen
@@ -971,7 +992,7 @@ class _PlaceDetailSheet extends StatelessWidget {
                       ? SaluteColors.primaryGreen
                       : SaluteColors.terracotta,
                   padding: DsSpacing.md,
-                ),
+                )),
                 if (place.rating != null) ...[
                   const SizedBox(width: DsSpacing.md),
                   const Icon(
@@ -1040,6 +1061,7 @@ class _PlaceDetailSheet extends StatelessWidget {
                   const SizedBox(width: DsSpacing.md),
                   _RoundActionButton(
                     icon: Icons.phone_outlined,
+                    label: 'Llamar al lugar',
                     onTap: () =>
                         _openExternal(context, Uri.parse('tel:${place.phone}')),
                   ),
@@ -1047,6 +1069,7 @@ class _PlaceDetailSheet extends StatelessWidget {
                 const SizedBox(width: DsSpacing.md),
                 _RoundActionButton(
                   icon: Icons.directions_outlined,
+                  label: 'Cómo llegar',
                   onTap: () => _openExternal(
                     context,
                     Uri.parse(
@@ -1065,13 +1088,16 @@ class _PlaceDetailSheet extends StatelessWidget {
 
 class _RoundActionButton extends StatelessWidget {
   final IconData icon;
+  final String label;
   final VoidCallback onTap;
 
-  const _RoundActionButton({required this.icon, required this.onTap});
+  const _RoundActionButton({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    return Tooltip(
+      message: label,
+      child: Material(
       color: SaluteColors.bgColor,
       shape: const CircleBorder(),
       child: InkWell(
@@ -1083,6 +1109,6 @@ class _RoundActionButton extends StatelessWidget {
           child: Icon(icon, color: SaluteColors.primaryGreen, size: 24),
         ),
       ),
-    );
+    ));
   }
 }

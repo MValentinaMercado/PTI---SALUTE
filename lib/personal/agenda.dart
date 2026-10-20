@@ -1,3 +1,5 @@
+import 'package:saluteapp/components/text_scale.dart';
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:flutter/material.dart';
 import 'package:saluteapp/components/app_header.dart';
 import 'package:saluteapp/core/active_profile_controller.dart';
@@ -67,6 +69,10 @@ class AgendaScreen extends StatefulWidget {
 class _AgendaScreenState extends State<AgendaScreen> {
   _MainView _view = _MainView.dia;
   int _statusFilter = 0; // 0=Todos, 1=Pendientes, 2=Completados
+
+  // Selección múltiple (solo en la vista "Todas").
+  bool _selecting = false;
+  final Set<String> _selectedIds = {};
 
   late DateTime _selectedDay; // usado por Día y Mes
   late DateTime _dayWindowStart; // arranque de la tira de 7 días de Día
@@ -148,6 +154,120 @@ class _AgendaScreenState extends State<AgendaScreen> {
     );
   }
 
+  // ── Selección múltiple ──
+
+  void _startSelecting([AgendaEvent? first]) {
+    setState(() {
+      _selecting = true;
+      _selectedIds
+        ..clear()
+        ..addAll(first == null ? const [] : [first.id]);
+    });
+  }
+
+  void _exitSelecting() {
+    setState(() {
+      _selecting = false;
+      _selectedIds.clear();
+    });
+  }
+
+  void _toggleSelected(AgendaEvent e) {
+    setState(() {
+      if (!_selectedIds.add(e.id)) _selectedIds.remove(e.id);
+    });
+  }
+
+  void _toggleSelectAll(List<AgendaEvent> visible) {
+    setState(() {
+      final allSelected = visible.isNotEmpty && visible.every((e) => _selectedIds.contains(e.id));
+      if (allSelected) {
+        _selectedIds.removeAll(visible.map((e) => e.id));
+      } else {
+        _selectedIds.addAll(visible.map((e) => e.id));
+      }
+    });
+  }
+
+  Future<void> _deleteSelected() async {
+    final ids = _selectedIds.toList();
+    if (ids.isEmpty) return;
+    final ok = await _confirmDelete(
+      title: ids.length == 1 ? '¿Eliminar 1 evento?' : '¿Eliminar ${ids.length} eventos?',
+      message: 'Esta acción no se puede deshacer.',
+    );
+    if (ok != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final deleted = await AgendaService.instance.deleteEvents(ids);
+    if (!mounted) return;
+    _exitSelecting();
+    messenger.showSnackBar(SnackBar(
+      content: Text(deleted == ids.length
+          ? (deleted == 1 ? 'Evento eliminado.' : '$deleted eventos eliminados.')
+          : 'Se eliminaron $deleted de ${ids.length} eventos. Probá de nuevo con el resto.'),
+    ));
+  }
+
+  Future<bool?> _confirmDelete({required String title, required String message}) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFB03A3A)),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Ver / editar / eliminar un evento ──
+
+  Future<void> _openDetails(AgendaEvent event) async {
+    final action = await showModalBottomSheet<_EventAction>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _EventDetailSheet(event: event),
+    );
+    if (action == null || !mounted) return;
+    switch (action) {
+      case _EventAction.edit:
+        final saved = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => AgendaEventFormScreen(
+              profileId: event.profileId,
+              profileName: event.profileName,
+              existing: event,
+            ),
+          ),
+        );
+        if (saved == true && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Evento actualizado.')));
+        }
+      case _EventAction.delete:
+        final ok = await _confirmDelete(
+          title: '¿Eliminar este evento?',
+          message: '"${event.title}" se va a borrar de la agenda. Esta acción no se puede deshacer.',
+        );
+        if (ok != true || !mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        try {
+          await AgendaService.instance.deleteEvent(event.id);
+          messenger.showSnackBar(const SnackBar(content: Text('Evento eliminado.')));
+        } catch (_) {
+          messenger.showSnackBar(const SnackBar(content: Text('No se pudo eliminar. Intentá de nuevo.')));
+        }
+      case _EventAction.toggleStatus:
+        _toggleStatus(event);
+    }
+  }
+
   void _toggleStatus(AgendaEvent event) {
     final next = event.status == AgendaEventStatus.completado
         ? AgendaEventStatus.pendiente
@@ -157,7 +277,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      // Con selección activa, "atrás" sale de la selección en vez de cerrar la agenda.
+      canPop: !_selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _selecting) _exitSelecting();
+      },
+      child: Scaffold(
       backgroundColor: SaluteColors.bgColor,
       body: SafeArea(
         child: Column(
@@ -169,7 +295,11 @@ class _AgendaScreenState extends State<AgendaScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _MainTabBar(
                 selected: _view,
-                onSelected: (v) => setState(() => _view = v),
+                onSelected: (v) => setState(() {
+                  _view = v;
+                  _selecting = false;
+                  _selectedIds.clear();
+                }),
               ),
             ),
             const SizedBox(height: 16),
@@ -187,7 +317,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                         child: Text(
                           'No se pudo cargar la agenda.\n${snapshot.error}',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: SaluteColors.textMuted),
                         ),
                       ),
                     );
@@ -202,6 +332,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
                         onStatusFilterChanged: (i) => setState(() => _statusFilter = i),
                         onToggleStatus: _toggleStatus,
                         onAdd: _openNewEventForActiveProfile,
+                        onOpen: _openDetails,
+                        selecting: _selecting,
+                        selectedIds: _selectedIds,
+                        onStartSelecting: _startSelecting,
+                        onExitSelecting: _exitSelecting,
+                        onToggleSelected: _toggleSelected,
+                        onToggleSelectAll: () => _toggleSelectAll(_applyStatusFilter(allEvents)),
+                        onDeleteSelected: _deleteSelected,
                       );
                     case _MainView.mes:
                       return _MesView(
@@ -216,6 +354,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                         ),
                         onToggleStatus: _toggleStatus,
                         onAdd: _openNewEventForActiveProfile,
+                        onOpen: _openDetails,
                       );
                     case _MainView.dia:
                     // Sin filtro de estado en esta vista: se muestran
@@ -234,6 +373,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                         events: dayEvents,
                         onToggleStatus: _toggleStatus,
                         onAdd: _openNewEventForActiveProfile,
+                        onOpen: _openDetails,
                       );
                   }
                 },
@@ -242,10 +382,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: SaluteColors.primaryGreen,
-        onPressed: _openNewEventForActiveProfile,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: _selecting
+          ? null
+          : FloatingActionButton(
+              tooltip: 'Nuevo evento',
+              backgroundColor: SaluteColors.primaryGreen,
+              onPressed: _openNewEventForActiveProfile,
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
       ),
     );
   }
@@ -306,7 +450,7 @@ class _MainTabBar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: isSelected ? Colors.white : Colors.grey[600],
+                    color: isSelected ? Colors.white : SaluteColors.textMuted,
                   ),
                 ),
               ),
@@ -329,6 +473,16 @@ class _TodasView extends StatelessWidget {
   final ValueChanged<int> onStatusFilterChanged;
   final ValueChanged<AgendaEvent> onToggleStatus;
   final VoidCallback onAdd;
+  final ValueChanged<AgendaEvent> onOpen;
+
+  // Selección múltiple
+  final bool selecting;
+  final Set<String> selectedIds;
+  final ValueChanged<AgendaEvent?> onStartSelecting;
+  final VoidCallback onExitSelecting;
+  final ValueChanged<AgendaEvent> onToggleSelected;
+  final VoidCallback onToggleSelectAll;
+  final VoidCallback onDeleteSelected;
 
   const _TodasView({
     required this.events,
@@ -337,6 +491,14 @@ class _TodasView extends StatelessWidget {
     required this.onStatusFilterChanged,
     required this.onToggleStatus,
     required this.onAdd,
+    required this.onOpen,
+    required this.selecting,
+    required this.selectedIds,
+    required this.onStartSelecting,
+    required this.onExitSelecting,
+    required this.onToggleSelected,
+    required this.onToggleSelectAll,
+    required this.onDeleteSelected,
   });
 
   @override
@@ -363,7 +525,31 @@ class _TodasView extends StatelessWidget {
             onFilterSelected: onStatusFilterChanged,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
+        if (selecting)
+          _SelectionBar(
+            count: selectedIds.length,
+            allSelected: sorted.isNotEmpty && sorted.every((e) => selectedIds.contains(e.id)),
+            onClose: onExitSelecting,
+            onToggleAll: onToggleSelectAll,
+            onDelete: onDeleteSelected,
+          )
+        else if (sorted.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => onStartSelecting(null),
+                icon: const Icon(Icons.checklist_rounded, size: 18, color: SaluteColors.primaryGreen),
+                label: const Text(
+                  'Seleccionar',
+                  style: TextStyle(color: SaluteColors.primaryGreen, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(height: 4),
         Expanded(
           child: orderedDays.isEmpty
               ? _EmptyState(
@@ -386,6 +572,10 @@ class _TodasView extends StatelessWidget {
                   ...dayEvents.map((e) => _EventRow(
                     event: e,
                     onToggleStatus: () => onToggleStatus(e),
+                    onOpen: () => selecting ? onToggleSelected(e) : onOpen(e),
+                    onLongPress: selecting ? null : () => onStartSelecting(e),
+                    selecting: selecting,
+                    selected: selectedIds.contains(e.id),
                   )),
                 ],
               );
@@ -413,7 +603,7 @@ class _DayHeader extends StatelessWidget {
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: isToday ? SaluteColors.primaryGreen : Colors.grey[500],
+        color: isToday ? SaluteColors.primaryGreen : SaluteColors.textMuted,
         letterSpacing: 0.2,
       ),
     );
@@ -434,6 +624,7 @@ class _MesView extends StatelessWidget {
   final List<AgendaEvent> dayEvents;
   final ValueChanged<AgendaEvent> onToggleStatus;
   final VoidCallback onAdd;
+  final ValueChanged<AgendaEvent> onOpen;
 
   const _MesView({
     required this.allEvents,
@@ -445,6 +636,7 @@ class _MesView extends StatelessWidget {
     required this.dayEvents,
     required this.onToggleStatus,
     required this.onAdd,
+    required this.onOpen,
   });
 
   @override
@@ -473,14 +665,19 @@ class _MesView extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
+                      tooltip: 'Mes anterior',
                       onPressed: onPrevMonth,
                       icon: const Icon(Icons.chevron_left, color: SaluteColors.primaryGreen),
                     ),
-                    Text(
-                      '${_monthLabelsFull[visibleMonth.month - 1]} ${visibleMonth.year}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87),
+                    Expanded(
+                      child: Text(
+                        '${_monthLabelsFull[visibleMonth.month - 1]} ${visibleMonth.year}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87),
+                      ),
                     ),
                     IconButton(
+                      tooltip: 'Mes siguiente',
                       onPressed: onNextMonth,
                       icon: const Icon(Icons.chevron_right, color: SaluteColors.primaryGreen),
                     ),
@@ -490,7 +687,7 @@ class _MesView extends StatelessWidget {
                   children: _weekdayLabelsShort
                       .map((l) => Expanded(
                     child: Center(
-                      child: Text(l, style: TextStyle(fontSize: 12, color: Colors.grey[400], fontWeight: FontWeight.w600)),
+                      child: Text(l, style: TextStyle(fontSize: 12, color: SaluteColors.textMuted, fontWeight: FontWeight.w600)),
                     ),
                   ))
                       .toList(),
@@ -524,7 +721,7 @@ class _MesView extends StatelessWidget {
             ),
           )
         else
-          ...dayEvents.map((e) => _EventRow(event: e, onToggleStatus: () => onToggleStatus(e))),
+          ...dayEvents.map((e) => _EventRow(event: e, onToggleStatus: () => onToggleStatus(e), onOpen: () => onOpen(e))),
       ],
     );
   }
@@ -624,6 +821,7 @@ class _DiaView extends StatelessWidget {
   final List<AgendaEvent> events;
   final ValueChanged<AgendaEvent> onToggleStatus;
   final VoidCallback onAdd;
+  final ValueChanged<AgendaEvent> onOpen;
 
   const _DiaView({
     required this.days,
@@ -635,6 +833,7 @@ class _DiaView extends StatelessWidget {
     required this.events,
     required this.onToggleStatus,
     required this.onAdd,
+    required this.onOpen,
   });
 
   @override
@@ -647,29 +846,32 @@ class _DiaView extends StatelessWidget {
           child: Row(
             children: [
               IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                tooltip: 'Semana anterior',
                 onPressed: onPrevWeek,
-                icon: Icon(Icons.chevron_left, color: Colors.grey[500]),
+                icon: Icon(Icons.chevron_left, color: SaluteColors.textMuted),
               ),
-              const Spacer(),
-              GestureDetector(
-                onTap: onPickDate,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.calendar_today_outlined, size: 16, color: SaluteColors.primaryGreen),
-                    SizedBox(width: 6),
-                    Text('Elegir fecha', style: TextStyle(color: SaluteColors.primaryGreen, fontWeight: FontWeight.w600)),
-                  ],
+              Expanded(
+                child: Center(
+                  child: A11yTap(
+                    onTap: onPickDate,
+                    label: 'Elegir fecha',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.calendar_today_outlined, size: 16, color: SaluteColors.primaryGreen),
+                        SizedBox(width: 6),
+                        Flexible(
+                          child: Text('Elegir fecha', style: TextStyle(color: SaluteColors.primaryGreen, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const Spacer(),
               IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                tooltip: 'Semana siguiente',
                 onPressed: onNextWeek,
-                icon: Icon(Icons.chevron_right, color: Colors.grey[500]),
+                icon: Icon(Icons.chevron_right, color: SaluteColors.textMuted),
               ),
             ],
           ),
@@ -691,6 +893,7 @@ class _DiaView extends StatelessWidget {
             itemBuilder: (_, i) => _EventRow(
               event: events[i],
               onToggleStatus: () => onToggleStatus(events[i]),
+              onOpen: () => onOpen(events[i]),
             ),
           ),
         ),
@@ -717,7 +920,7 @@ class _DaySelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 100,
+      height: scaledHeight(context, 100),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -743,7 +946,7 @@ class _DaySelector extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: selected ? Colors.white70 : Colors.grey[500],
+                      color: selected ? Colors.white70 : SaluteColors.textMuted,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -761,7 +964,7 @@ class _DaySelector extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: selected ? Colors.white70 : Colors.grey[500],
+                      color: selected ? Colors.white70 : SaluteColors.textMuted,
                     ),
                   ),
                 ],
@@ -836,14 +1039,14 @@ class _TimelineHeader extends StatelessWidget {
           width: 64,
           child: Text(
             'Hora',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: SaluteColors.textMuted),
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: Text(
             'Tareas',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: SaluteColors.textMuted),
           ),
         ),
       ],
@@ -859,7 +1062,20 @@ class _EventRow extends StatelessWidget {
   final AgendaEvent event;
   final VoidCallback onToggleStatus;
 
-  const _EventRow({required this.event, required this.onToggleStatus});
+  /// Tocar la fila abre el detalle (o, en modo selección, marca/desmarca).
+  final VoidCallback onOpen;
+  final VoidCallback? onLongPress;
+  final bool selecting;
+  final bool selected;
+
+  const _EventRow({
+    required this.event,
+    required this.onToggleStatus,
+    required this.onOpen,
+    this.onLongPress,
+    this.selecting = false,
+    this.selected = false,
+  });
 
   String get _time =>
       '${event.date.hour.toString().padLeft(2, '0')}:${event.date.minute.toString().padLeft(2, '0')}';
@@ -867,20 +1083,41 @@ class _EventRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final done = event.status == AgendaEventStatus.completado;
-    return IntrinsicHeight(
+    return Semantics(
+      button: true,
+      selected: selecting ? selected : null,
+      label: selecting
+          ? '${event.title}, ${selected ? 'seleccionado' : 'no seleccionado'}'
+          : 'Ver evento: ${event.title}',
+      child: InkWell(
+        onTap: onOpen,
+        onLongPress: onLongPress,
+        child: Container(
+          color: selected ? SaluteColors.lightGreen.withValues(alpha: 0.35) : Colors.transparent,
+          child: IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (selecting)
+            Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Checkbox(
+                value: selected,
+                onChanged: (_) => onOpen(),
+                activeColor: SaluteColors.primaryGreen,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
           SizedBox(
-            width: 80,
+            width: selecting ? 68 : 80,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 0, 20),
+              padding: EdgeInsets.fromLTRB(selecting ? 4 : 20, 20, 0, 20),
               child: Text(
                 _time,
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
-                  color: done ? Colors.grey[400] : Colors.black87,
+                  color: done ? SaluteColors.textMuted : Colors.black87,
                 ),
               ),
             ),
@@ -898,7 +1135,7 @@ class _EventRow extends StatelessWidget {
                       children: [
                         Text(
                           event.location.isNotEmpty ? event.location : event.profileName,
-                          style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                          style: TextStyle(fontSize: 13, color: SaluteColors.textMuted),
                         ),
                         const SizedBox(height: 3),
                         Text(
@@ -915,10 +1152,10 @@ class _EventRow extends StatelessWidget {
                           children: [
                             const Icon(Icons.person_outline, size: 14, color: SaluteColors.primaryGreen),
                             const SizedBox(width: 4),
-                            Text(
+                            Flexible(child: Text(
                               event.profileName,
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                            ),
+                              style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
+                            )),
                             if (event.reminderMinutesBefore != null) ...[
                               const SizedBox(width: 10),
                               Icon(Icons.alarm, size: 13, color: SaluteColors.terracotta),
@@ -926,7 +1163,8 @@ class _EventRow extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        GestureDetector(
+                        A11yTap(
+                          hint: 'Tocá para cambiar el estado',
                           onTap: onToggleStatus,
                           child: _StatusBadge(status: event.status),
                         ),
@@ -934,15 +1172,267 @@ class _EventRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: const BoxDecoration(color: SaluteColors.primaryGreen, shape: BoxShape.circle),
-                    child: Icon(_typeIcons[event.type] ?? Icons.event_note_outlined, color: Colors.white, size: 18),
+                  Column(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(color: SaluteColors.primaryGreen, shape: BoxShape.circle),
+                        child: Icon(_typeIcons[event.type] ?? Icons.event_note_outlined, color: Colors.white, size: 18),
+                      ),
+                      if (!selecting) ...[
+                        const SizedBox(height: 10),
+                        const Icon(Icons.visibility_outlined, size: 20, color: SaluteColors.primaryGreen),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BARRA DE SELECCIÓN MÚLTIPLE
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SelectionBar extends StatelessWidget {
+  final int count;
+  final bool allSelected;
+  final VoidCallback onClose;
+  final VoidCallback onToggleAll;
+  final VoidCallback onDelete;
+
+  const _SelectionBar({
+    required this.count,
+    required this.allSelected,
+    required this.onClose,
+    required this.onToggleAll,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const red = Color(0xFFB03A3A);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8E8E8)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'Cancelar selección',
+            onPressed: onClose,
+            icon: const Icon(Icons.close_rounded),
+          ),
+          Expanded(
+            child: Text(
+              count == 0 ? 'Elegí eventos' : (count == 1 ? '1 seleccionado' : '$count seleccionados'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.black87),
+            ),
+          ),
+          TextButton(
+            onPressed: onToggleAll,
+            child: Text(
+              allSelected ? 'Ninguno' : 'Todos',
+              style: const TextStyle(color: SaluteColors.primaryGreen, fontWeight: FontWeight.w700),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Eliminar seleccionados',
+            onPressed: count == 0 ? null : onDelete,
+            icon: Icon(Icons.delete_outline_rounded, color: count == 0 ? SaluteColors.textMuted : red),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DETALLE DE UN EVENTO (ver / editar / eliminar)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum _EventAction { edit, delete, toggleStatus }
+
+const _typeLabelsLong = {
+  AgendaEventType.turno: 'Turno',
+  AgendaEventType.estudio: 'Estudio',
+  AgendaEventType.vacuna: 'Vacuna',
+  AgendaEventType.control: 'Control',
+  AgendaEventType.medicacion: 'Medicación',
+  AgendaEventType.otro: 'Otro',
+};
+
+String _longDate(DateTime d) =>
+    '${_weekdayLabels[d.weekday - 1]} ${d.day} de ${_monthLabelsFull[d.month - 1]} de ${d.year}';
+
+String _hhmm(DateTime d) =>
+    '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+String _reminderText(int? minutes) {
+  if (minutes == null) return 'Sin alarma';
+  final known = AgendaEventFormScreen.reminderLabels[minutes];
+  if (known != null) return known;
+  if (minutes % 1440 == 0) return '${minutes ~/ 1440} día(s) antes';
+  if (minutes % 60 == 0) return '${minutes ~/ 60} h antes';
+  return '$minutes min antes';
+}
+
+class _EventDetailSheet extends StatelessWidget {
+  final AgendaEvent event;
+  const _EventDetailSheet({required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    final done = event.status == AgendaEventStatus.completado;
+    const red = Color(0xFFB03A3A);
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(22, 14, 22, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: SaluteColors.primaryGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(_typeIcons[event.type] ?? Icons.event_note_outlined, color: SaluteColors.primaryGreen),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.title,
+                        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Colors.black87),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _typeLabelsLong[event.type] ?? 'Evento',
+                        style: TextStyle(fontSize: 13, color: SaluteColors.textMuted, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _InfoLine(icon: Icons.person_outline, label: 'Perfil', value: event.profileName),
+            _InfoLine(icon: Icons.event_outlined, label: 'Fecha', value: _longDate(event.date)),
+            _InfoLine(icon: Icons.access_time, label: 'Hora', value: _hhmm(event.date)),
+            _InfoLine(
+              icon: Icons.location_on_outlined,
+              label: 'Lugar',
+              value: event.location.isNotEmpty ? event.location : 'Sin lugar indicado',
+            ),
+            _InfoLine(icon: Icons.alarm, label: 'Alarma', value: _reminderText(event.reminderMinutesBefore)),
+            _InfoLine(icon: Icons.flag_outlined, label: 'Estado', value: _statusLabels[event.status] ?? ''),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context, _EventAction.toggleStatus),
+                icon: Icon(done ? Icons.radio_button_unchecked : Icons.check_circle_outline, size: 18),
+                label: Text(done ? 'Marcar como pendiente' : 'Marcar como completado'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: SaluteColors.primaryGreen,
+                  minimumSize: const Size.fromHeight(48),
+                  side: BorderSide(color: SaluteColors.primaryGreen.withValues(alpha: 0.4)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.pop(context, _EventAction.edit),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Editar', style: TextStyle(fontWeight: FontWeight.w800)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: SaluteColors.primaryGreen,
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context, _EventAction.delete),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: const Text('Eliminar', style: TextStyle(fontWeight: FontWeight.w800)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: red,
+                      minimumSize: const Size.fromHeight(48),
+                      side: BorderSide(color: red.withValues(alpha: 0.5)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _InfoLine({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: SaluteColors.primaryGreen),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 56,
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 13, color: SaluteColors.textMuted, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
           ),
         ],
       ),
@@ -981,7 +1471,7 @@ class _StatusBadge extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             _statusLabels[status] ?? '',
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: SaluteColors.primaryGreen),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: SaluteColors.primaryGreen),
           ),
         ],
       ),
@@ -1006,9 +1496,9 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.event_busy_outlined, size: 44, color: Colors.grey[350]),
+            Icon(Icons.event_busy_outlined, size: 44, color: SaluteColors.textMuted),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+            Text(message, textAlign: TextAlign.center, style: TextStyle(color: SaluteColors.textMuted, fontSize: 14)),
             const SizedBox(height: 16),
             TextButton.icon(
               onPressed: onAdd,

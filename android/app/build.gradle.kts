@@ -29,8 +29,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.saluteapp"
-        // Health Connect requires Android API 26 or newer.
-        minSdk = maxOf(flutter.minSdkVersion, 26)
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

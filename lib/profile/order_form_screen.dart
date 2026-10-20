@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:saluteapp/core/colors.dart';
+import 'package:saluteapp/core/models/family_profile.dart';
 import 'package:saluteapp/core/models/medical_record.dart';
 import 'package:saluteapp/core/services/attachment_service.dart';
 import 'package:saluteapp/core/services/medical_record_service.dart';
@@ -17,7 +19,27 @@ class OrderFormScreen extends StatefulWidget {
   final String profileId;
   final String profileName;
 
-  const OrderFormScreen({super.key, required this.profileId, required this.profileName});
+  /// Mascota → el selector ofrece especialidades veterinarias.
+  final bool isPet;
+
+  /// Si viene, el formulario edita esa orden en vez de crear una nueva.
+  final MedicalRecord? existing;
+
+  const OrderFormScreen({
+    super.key,
+    required this.profileId,
+    required this.profileName,
+    this.isPet = false,
+    this.existing,
+  });
+
+  /// Atajo para abrir el formulario a partir de un perfil.
+  factory OrderFormScreen.forProfile(FamilyProfile p, {MedicalRecord? existing}) => OrderFormScreen(
+        profileId: p.id,
+        profileName: p.name,
+        isPet: p.type == ProfileType.mascota,
+        existing: existing,
+      );
 
   @override
   State<OrderFormScreen> createState() => _OrderFormScreenState();
@@ -27,7 +49,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _titleController = TextEditingController();
   final _professionalController = TextEditingController();
   final _institutionController = TextEditingController();
-  RecordCategory _category = RecordCategory.estudio;
+  final _otherSpecialtyController = TextEditingController();
+  String? _specialty; // null = todavía sin elegir
   RecordStatus _status = RecordStatus.pendiente;
   DateTime _date = DateTime.now();
   bool _saving = false;
@@ -38,20 +61,137 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   bool _processing = false;
   bool _saved = false; // si el form se cierra sin guardar, se borra el archivo
 
-  static const _categoryLabels = {
-    RecordCategory.estudio: 'Estudio / Imagen',
-    RecordCategory.laboratorio: 'Laboratorio',
-    RecordCategory.cardiologia: 'Cardiología',
-  };
+  // Edición: el adjunto que ya tenía la orden NO se borra del disco hasta
+  // que se guardan los cambios (si el usuario cancela, tiene que seguir ahí).
+  String? _originalAttachmentPath;
+  final List<String> _deferredDeletes = [];
+
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    if (e == null) return;
+    _titleController.text = e.title;
+    _professionalController.text = e.professional;
+    _institutionController.text = e.institution;
+    _status = e.status;
+    _date = e.date;
+    final saved = (e.details['specialty'] as String?)?.trim() ?? '';
+    if (saved.isNotEmpty) {
+      if (_specialties.contains(saved)) {
+        _specialty = saved;
+      } else {
+        _specialty = _otherValue;
+        _otherSpecialtyController.text = saved;
+      }
+    }
+    _attachment = OrderAttachment.fromDetails(e.details);
+    _originalAttachmentPath = _attachment?.path;
+    _ocrText = (e.details['ocrText'] as String?) ?? '';
+  }
+
+  /// Descarta un archivo adjunto: los nuevos (cargados en esta sesión) se
+  /// borran ya; el original de una orden en edición espera al guardado.
+  Future<void> _discard(String path) async {
+    if (path == _originalAttachmentPath) {
+      _deferredDeletes.add(path);
+    } else {
+      await AttachmentService.instance.delete(path);
+    }
+  }
+
+  /// Valor reservado del selector: muestra un campo de texto libre. Lo que
+  /// se escribe ahí queda SOLO en esta orden; no se agrega a la lista.
+  static const _otherValue = 'Otra';
+
+  static const _humanSpecialties = [
+    'Análisis de laboratorio',
+    'Diagnóstico por imágenes',
+    'Cardiología',
+    'Clínica médica',
+    'Pediatría',
+    'Ginecología',
+    'Obstetricia',
+    'Traumatología',
+    'Dermatología',
+    'Oftalmología',
+    'Otorrinolaringología',
+    'Odontología',
+    'Neurología',
+    'Gastroenterología',
+    'Endocrinología',
+    'Urología',
+    'Nefrología',
+    'Neumología',
+    'Reumatología',
+    'Oncología',
+    'Hematología',
+    'Psiquiatría',
+    'Psicología',
+    'Nutrición',
+    'Kinesiología / Rehabilitación',
+    'Alergia e inmunología',
+    'Infectología',
+    'Cirugía general',
+  ];
+
+  static const _petSpecialties = [
+    'Análisis de laboratorio',
+    'Radiografía / Ecografía',
+    'Clínica general',
+    'Vacunación y desparasitación',
+    'Cardiología',
+    'Dermatología',
+    'Oftalmología',
+    'Odontología veterinaria',
+    'Traumatología y ortopedia',
+    'Neurología',
+    'Gastroenterología',
+    'Endocrinología',
+    'Oncología',
+    'Nutrición',
+    'Etología (comportamiento)',
+    'Reproducción / Castración',
+    'Cirugía',
+    'Rehabilitación / Fisioterapia',
+    'Animales exóticos',
+  ];
+
+  List<String> get _specialties => widget.isPet ? _petSpecialties : _humanSpecialties;
+
+  /// Categoría "técnica" del historial según la especialidad elegida: se
+  /// sigue usando para filtrar (Laboratorio / Estudios) en la lista de órdenes.
+  static RecordCategory _categoryFor(String? specialty) {
+    switch (specialty) {
+      case 'Análisis de laboratorio':
+        return RecordCategory.laboratorio;
+      case 'Cardiología':
+        return RecordCategory.cardiologia;
+      default:
+        return RecordCategory.estudio;
+    }
+  }
+
+  /// Especialidad final que se guarda: la elegida o, con "Otra", el texto
+  /// escrito. Vacía si todavía no se eligió nada.
+  String get _specialtyValue {
+    if (_specialty == _otherValue) return _otherSpecialtyController.text.trim();
+    return _specialty ?? '';
+  }
 
   @override
   void dispose() {
-    if (!_saved && _attachment != null) {
+    // Sin guardar: se borra solo el adjunto cargado en esta sesión, nunca el
+    // que la orden ya tenía.
+    if (!_saved && _attachment != null && _attachment!.path != _originalAttachmentPath) {
       AttachmentService.instance.delete(_attachment!.path);
     }
     _titleController.dispose();
     _professionalController.dispose();
     _institutionController.dispose();
+    _otherSpecialtyController.dispose();
     super.dispose();
   }
 
@@ -71,7 +211,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
       // Si ya había un adjunto, se reemplaza y se borra el anterior.
       final old = _attachment;
-      if (old != null) await AttachmentService.instance.delete(old.path);
+      if (old != null) await _discard(old.path);
 
       var ocrText = '';
       OcrResult? ocr;
@@ -121,8 +261,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     if (_institutionController.text.trim().isEmpty && r.institution != null) {
       _institutionController.text = r.institution!;
     }
-    if (r.category != null && _categoryLabels.containsKey(r.category)) {
-      _category = r.category!;
+    if (_specialty == null) {
+      if (r.category == RecordCategory.laboratorio) {
+        _specialty = 'Análisis de laboratorio';
+      } else if (r.category == RecordCategory.cardiologia) {
+        _specialty = 'Cardiología';
+      }
     }
     if (r.date != null) _date = r.date!;
   }
@@ -134,14 +278,16 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _attachment = null;
       _ocrText = '';
     });
-    await AttachmentService.instance.delete(old.path);
+    await _discard(old.path);
   }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _date,
-      firstDate: DateTime.now().subtract(const Duration(days: 730)),
+      firstDate: _date.isBefore(DateTime.now().subtract(const Duration(days: 730)))
+          ? _date
+          : DateTime.now().subtract(const Duration(days: 730)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked != null) setState(() => _date = picked);
@@ -154,24 +300,48 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       );
       return;
     }
+    if (_specialty == _otherValue && _otherSpecialtyController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribí la especialidad de la orden.')),
+      );
+      return;
+    }
+    final specialty = _specialtyValue;
     setState(() => _saving = true);
     try {
+      final existing = widget.existing;
       final record = MedicalRecord(
-        id: '',
-        category: _category,
+        id: existing?.id ?? '',
+        // Una orden vieja sin especialidad conserva su categoría.
+        category: (existing != null && _specialty == null) ? existing.category : _categoryFor(_specialty),
         date: _date,
         title: _titleController.text.trim(),
         professional: _professionalController.text.trim(),
         institution: _institutionController.text.trim(),
         status: _status,
         details: {
+          // Al editar se conserva cualquier otro dato guardado en la orden.
+          if (existing != null)
+            for (final e in existing.details.entries)
+              if (!const {'specialty', 'ocrText', 'attachmentPath', 'attachmentName', 'attachmentType'}
+                  .contains(e.key))
+                e.key: e.value,
+          if (specialty.isNotEmpty) 'specialty': specialty,
           if (_attachment != null) ..._attachment!.toDetails(),
           if (_ocrText.trim().isNotEmpty)
             'ocrText': _ocrText.length > 6000 ? _ocrText.substring(0, 6000) : _ocrText,
         },
       );
-      await MedicalRecordService.instance.addRecord(widget.profileId, record);
+      if (existing != null) {
+        await MedicalRecordService.instance.updateRecord(widget.profileId, record);
+      } else {
+        await MedicalRecordService.instance.addRecord(widget.profileId, record);
+      }
       _saved = true;
+      // Recién ahora que se guardó se borran los adjuntos reemplazados/quitados.
+      for (final path in _deferredDeletes) {
+        if (path != _attachment?.path) await AttachmentService.instance.delete(path);
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
@@ -192,7 +362,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         backgroundColor: SaluteColors.bgColor,
         elevation: 0,
         foregroundColor: Colors.black87,
-        title: Text('Nueva orden · ${widget.profileName}'),
+        title: Text('${_isEditing ? 'Editar orden' : 'Nueva orden'} · ${widget.profileName}'),
       ),
       body: SafeArea(
         child: ListView(
@@ -214,12 +384,34 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               decoration: _decoration('Ej: Análisis de Sangre'),
             ),
             const SizedBox(height: 18),
-            _Label('Tipo'),
-            _CategoryPicker(
-              value: _category,
-              options: _categoryLabels,
-              onChanged: (c) => setState(() => _category = c),
+            _Label('Especialidad'),
+            DropdownButtonFormField<String>(
+              initialValue: _specialty,
+              isExpanded: true,
+              hint: const Text('Elegí una especialidad'),
+              decoration: _decoration('Elegí una especialidad'),
+              borderRadius: BorderRadius.circular(14),
+              items: [
+                ..._specialties.map((e) => DropdownMenuItem(value: e, child: Text(e))),
+                const DropdownMenuItem(value: _otherValue, child: Text('Otra…')),
+              ],
+              onChanged: (v) => setState(() => _specialty = v),
             ),
+            if (_specialty == _otherValue) ...[
+              const SizedBox(height: 10),
+              TextField(
+                controller: _otherSpecialtyController,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: _decoration('Escribí la especialidad'),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 4),
+                child: Text(
+                  'Se guarda solo en esta orden.',
+                  style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
+                ),
+              ),
+            ],
             const SizedBox(height: 18),
             _Label('Médico (opcional)'),
             TextField(
@@ -248,9 +440,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   children: [
                     const Icon(Icons.calendar_today_outlined, size: 18, color: SaluteColors.primaryGreen),
                     const SizedBox(width: 10),
-                    Text(
-                      '${_date.day.toString().padLeft(2, '0')}/${_date.month.toString().padLeft(2, '0')}/${_date.year}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    Flexible(
+                      child: Text(
+                        '${_date.day.toString().padLeft(2, '0')}/${_date.month.toString().padLeft(2, '0')}/${_date.year}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ],
                 ),
@@ -280,9 +474,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               ],
             ),
             const SizedBox(height: 28),
-            SizedBox(
-              height: 52,
-              child: ElevatedButton(
+            ConstrainedBox(constraints: const BoxConstraints(minHeight: 52), child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: SaluteColors.primaryGreen,
@@ -295,7 +487,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   height: 22,
                   child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
                 )
-                    : const Text('GUARDAR ORDEN', style: TextStyle(fontWeight: FontWeight.w800)),
+                    : Text(_isEditing ? 'GUARDAR CAMBIOS' : 'GUARDAR ORDEN', style: const TextStyle(fontWeight: FontWeight.w800)),
               ),
             ),
           ],
@@ -342,45 +534,6 @@ class _Label extends StatelessWidget {
   }
 }
 
-class _CategoryPicker extends StatelessWidget {
-  final RecordCategory value;
-  final Map<RecordCategory, String> options;
-  final ValueChanged<RecordCategory> onChanged;
-
-  const _CategoryPicker({required this.value, required this.options, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: options.entries.map((e) {
-        final selected = e.key == value;
-        return GestureDetector(
-          onTap: () => onChanged(e.key),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: selected ? SaluteColors.primaryGreen : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: selected ? SaluteColors.primaryGreen : Colors.grey.shade300),
-            ),
-            child: Text(
-              e.value,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : Colors.black87,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
 class _StatusChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -412,7 +565,7 @@ class _StatusChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: selected ? color : Colors.grey[600],
+            color: selected ? color : SaluteColors.textMuted,
           ),
         ),
       ),
@@ -456,7 +609,7 @@ class _AttachmentSection extends StatelessWidget {
           const _Label('Adjuntar orden (opcional)'),
           Text(
             'Sacá una foto y completamos los datos por vos. Se guarda solo en este dispositivo.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
           ),
           const SizedBox(height: 12),
           if (processing)
@@ -470,7 +623,7 @@ class _AttachmentSection extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2.4, color: SaluteColors.primaryGreen),
                   ),
                   SizedBox(width: 12),
-                  Text('Leyendo la orden…'),
+                  Expanded(child: Text('Leyendo la orden…')),
                 ],
               ),
             )
@@ -552,17 +705,17 @@ class _Preview extends StatelessWidget {
             width: 64,
             height: 64,
             child: attachment.isImage
-                ? FutureBuilder<File?>(
-              future: AttachmentService.instance.resolve(attachment.path),
+                ? FutureBuilder<Uint8List?>(
+              future: AttachmentService.instance.readBytes(attachment.path),
               builder: (_, snap) {
-                final f = snap.data;
-                if (f == null) return const ColoredBox(color: Colors.black12);
-                return Image.file(f, fit: BoxFit.cover, cacheWidth: 200);
+                final bytes = snap.data;
+                if (bytes == null) return const ColoredBox(color: Colors.black12);
+                return Image.memory(bytes, fit: BoxFit.cover, cacheWidth: 200, semanticLabel: 'Foto de la orden médica adjunta');
               },
             )
                 : const ColoredBox(
               color: Color(0x14000000),
-              child: Icon(Icons.picture_as_pdf, color: SaluteColors.terracotta, size: 32),
+              child: Icon(Icons.picture_as_pdf, color: SaluteColors.terracotta, size: 32, semanticLabel: 'Archivo PDF adjunto'),
             ),
           ),
         ),

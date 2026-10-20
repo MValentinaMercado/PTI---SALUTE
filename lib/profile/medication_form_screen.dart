@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:saluteapp/components/voice_buttons.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/medicine_item.dart';
 import 'package:saluteapp/core/models/medication.dart';
@@ -215,7 +216,7 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+            child: const Text('Eliminar', style: TextStyle(color: SaluteColors.danger)),
           ),
         ],
       ),
@@ -251,7 +252,8 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
         actions: [
           if (_isEditing)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              tooltip: 'Eliminar',
+              icon: const Icon(Icons.delete_outline, color: SaluteColors.danger),
               onPressed: _saving ? null : _delete,
             ),
         ],
@@ -296,7 +298,7 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
               const SizedBox(height: 8),
               Text(
                 'Este campo se guarda cifrado en el dispositivo.',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
               ),
               const SizedBox(height: 32),
               _buildSaveButton(),
@@ -342,7 +344,7 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text('Atajos:', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text('Atajos:', style: TextStyle(fontSize: 12, color: SaluteColors.textMuted)),
         chip('1 vez al día', 24),
         chip('Cada 12 h', 12),
         chip('Cada 8 h', 8),
@@ -366,7 +368,7 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
           hasTimes
               ? 'Recibís una alerta en el celular a cada horario.'
               : 'Agregá al menos un horario para recibir alertas.',
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
         ),
         value: _remindersEnabled,
         onChanged: (v) => setState(() => _remindersEnabled = v),
@@ -387,9 +389,9 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today_outlined, size: 18, color: Colors.grey[500]),
+            Icon(Icons.calendar_today_outlined, size: 18, color: SaluteColors.textMuted),
             const SizedBox(width: 10),
-            Text(_formatDate(_startDate), style: const TextStyle(color: Colors.black87, fontSize: 15)),
+            Flexible(child: Text(_formatDate(_startDate), style: const TextStyle(color: Colors.black87, fontSize: 15))),
           ],
         ),
       ),
@@ -413,7 +415,7 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
           const SizedBox(height: 8),
           Text(
             'Se repite todos los días hasta que lo pauses o lo elimines.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
           ),
         ] else ...[
           const SizedBox(height: 14),
@@ -439,12 +441,14 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
           Row(
             children: [
               IconButton(
+                tooltip: 'Disminuir',
                 onPressed: _durationDays > 1 ? () => setState(() => _durationDays--) : null,
                 icon: const Icon(Icons.remove_circle_outline),
                 color: SaluteColors.primaryGreen,
               ),
-              Text('$_durationDays días', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              Flexible(child: Text('$_durationDays días', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
               IconButton(
+                tooltip: 'Aumentar',
                 onPressed: _durationDays < 365 ? () => setState(() => _durationDays++) : null,
                 icon: const Icon(Icons.add_circle_outline),
                 color: SaluteColors.primaryGreen,
@@ -453,7 +457,7 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
           ),
           Text(
             'Última toma: ${_formatDate(lastDay)}',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
           ),
         ],
       ],
@@ -489,7 +493,7 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
       return Text(
         'Todavía no tenés medicamentos en Mi Botiquín. Cuando los cargues vas a poder vincularlos '
         'acá para que el stock se descuente solo al marcar cada toma.',
-        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
       );
     }
 
@@ -565,12 +569,14 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
                 ),
               ),
               IconButton(
+                tooltip: 'Disminuir',
                 onPressed: _unitsPerDose > 1 ? () => setState(() => _unitsPerDose--) : null,
                 icon: const Icon(Icons.remove_circle_outline),
                 color: SaluteColors.primaryGreen,
               ),
               Text('$_unitsPerDose', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               IconButton(
+                tooltip: 'Aumentar',
                 onPressed: _unitsPerDose < 20 ? () => setState(() => _unitsPerDose++) : null,
                 icon: const Icon(Icons.add_circle_outline),
                 color: SaluteColors.primaryGreen,
@@ -595,7 +601,16 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
       style: const TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+        // Dictado solo en los campos largos (indicaciones, notas).
+        suffixIcon: maxLines > 1
+            ? Align(
+                alignment: Alignment.topRight,
+                widthFactor: 1,
+                heightFactor: 1,
+                child: DictationButton(controller: controller),
+              )
+            : null,
+        hintStyle: TextStyle(color: SaluteColors.textMuted, fontSize: 15),
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -613,10 +628,7 @@ class _MedicationFormScreenState extends State<MedicationFormScreen> {
   }
 
   Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: FilledButton(
+    return ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 56), child: FilledButton(
         onPressed: _saving ? null : _save,
         style: FilledButton.styleFrom(
           backgroundColor: SaluteColors.primaryGreen,
@@ -646,7 +658,7 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
         color: SaluteColors.primaryGreen,
         letterSpacing: 1,

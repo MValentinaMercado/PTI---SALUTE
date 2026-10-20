@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:saluteapp/components/design_system.dart';
 import 'package:saluteapp/components/app_header.dart';
 import 'package:saluteapp/components/profile_avatar.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/family_profile.dart';
-import 'package:saluteapp/core/models/vital_entry.dart';
 import 'package:saluteapp/core/settingsScreen.dart';
+import 'package:saluteapp/core/models/vital_entry.dart';
 import 'package:saluteapp/personal/metricas.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -16,15 +15,15 @@ const double _borderRadius = 22.0;
 const double _smallBorderRadius = 16.0;
 const EdgeInsets _cardPadding = EdgeInsets.all(18);
 const EdgeInsets _screenPadding = EdgeInsets.fromLTRB(20, 16, 20, 16);
-const Color _alertRed = SaluteColors.alert;
+const Color _alertRed = Color(0xFFB03A3A);
 
 List<BoxShadow> _softShadow([double alpha = 0.05]) => [
-  BoxShadow(
-    color: Colors.black.withValues(alpha: alpha),
-    blurRadius: 14,
-    offset: const Offset(0, 4),
-  ),
-];
+      BoxShadow(
+        color: Colors.black.withValues(alpha: alpha),
+        blurRadius: 14,
+        offset: const Offset(0, 4),
+      ),
+    ];
 
 class FamilyProfileData {
   final String name;
@@ -208,9 +207,7 @@ class FamiliarProfileScreen extends StatelessWidget {
               onSettings: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => SettingsScreen(
-                      onBackToDashboard: () => Navigator.of(context).pop(),
-                    ),
+                    builder: (_) => SettingsScreen(onBackToDashboard: () => Navigator.of(context).pop()),
                   ),
                 );
               },
@@ -228,7 +225,7 @@ class FamiliarProfileScreen extends StatelessWidget {
                       onChangePhoto: onChangePhoto,
                     ),
                     const SizedBox(height: 28),
-                    const DsSectionTitle(title: 'Resumen clínico'),
+                    const _SectionTitle(title: 'Resumen clínico', icon: Icons.monitor_heart_outlined),
                     const SizedBox(height: 14),
                     _ClinicalOverviewGrid(member: member),
                     if (!member.isPet) ...[
@@ -242,26 +239,22 @@ class FamiliarProfileScreen extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 28),
-                    if (member.isPet)
-                      _WellbeingCard(member: member, onTap: onOpenWellbeing)
-                    else
-                      HealthStatusCard(
-                        latest: member.latestVital,
-                        onTap: onOpenWellbeing,
-                      ),
+                    member.isPet
+                        ? _WellbeingCard(member: member, onTap: onOpenWellbeing)
+                        : HealthStatusCard(
+                            latest: member.latestVital,
+                            onTap: onOpenWellbeing,
+                          ),
                     const SizedBox(height: 14),
                     if (onOpenVaccines != null) ...[
                       _VaccineBanner(onTap: onOpenVaccines!),
                       const SizedBox(height: 14),
                     ],
                     const SizedBox(height: 14),
-                    const DsSectionTitle(title: 'Alertas'),
+                    const _SectionTitle(title: 'Alertas', icon: Icons.notifications_active_outlined),
                     const SizedBox(height: 12),
                     if (member.alerts.isEmpty)
-                      _EmptySectionHint(
-                        text:
-                            'No hay turnos ni alertas pendientes para ${member.name}.',
-                      )
+                      _EmptySectionHint(text: 'No hay turnos ni alertas pendientes para ${member.name}.')
                     else
                       ...member.alerts.expand(
                         (alert) => [
@@ -276,17 +269,14 @@ class FamiliarProfileScreen extends StatelessWidget {
                         ],
                       ),
                     const SizedBox(height: 20),
-                    const DsSectionTitle(title: 'Medicación actual'),
+                    const _SectionTitle(title: 'Medicación actual', icon: Icons.medication_outlined),
                     const SizedBox(height: 12),
-                    if (member.medications.isNotEmpty &&
-                        onOpenChecklist != null) ...[
+                    if (member.medications.isNotEmpty && onOpenChecklist != null) ...[
                       _ChecklistBanner(onTap: onOpenChecklist!),
                       const SizedBox(height: 14),
                     ],
                     if (member.medications.isEmpty)
-                      const _EmptySectionHint(
-                        text: 'Sin medicación activa registrada.',
-                      )
+                      const _EmptySectionHint(text: 'Sin medicación activa registrada.')
                     else
                       ...member.medications.map(
                         (medication) => _MedicationItem(
@@ -294,9 +284,7 @@ class FamiliarProfileScreen extends StatelessWidget {
                           dose: medication.dose,
                           progress: medication.progress,
                           isChronic: medication.isChronic,
-                          onTap:
-                              onEditMedication != null &&
-                                  medication.id.isNotEmpty
+                          onTap: onEditMedication != null && medication.id.isNotEmpty
                               ? () => onEditMedication!(medication.id)
                               : null,
                         ),
@@ -309,6 +297,46 @@ class FamiliarProfileScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION TITLE HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  const _SectionTitle({required this.title, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: SaluteColors.lightGreen.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: SaluteColors.primaryGreen),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -332,10 +360,7 @@ class _ProfileHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = [
-      member.relation,
-      member.age,
-    ].where((e) => e.isNotEmpty).join(' • ');
+    final subtitle = [member.relation, member.age].where((e) => e.isNotEmpty).join(' • ');
     // Mascotas: terracota más claro que el del avatar; personas: verde.
     final gradientColors = member.isPet
         ? const [Color(0xFFC96F48), Color(0xFFA9532F)]
@@ -380,87 +405,81 @@ class _ProfileHeaderCard extends StatelessWidget {
             child: SizedBox(
               width: double.infinity,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  ProfileAvatar(
-                    avatarUrl: member.avatarUrl,
-                    type: member.isPet
-                        ? ProfileType.mascota
-                        : ProfileType.persona,
-                    name: member.name,
-                    radius: 50,
-                    ring: true,
-                    showInitial: false,
-                    onEditPhoto: onChangePhoto,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ProfileAvatar(
+                  avatarUrl: member.avatarUrl,
+                  type: member.isPet ? ProfileType.mascota : ProfileType.persona,
+                  name: member.name,
+                  radius: 50,
+                  ring: true,
+                  showInitial: false,
+                  onEditPhoto: onChangePhoto,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  member.name,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -0.3,
                   ),
-                  const SizedBox(height: 16),
+                ),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 4),
                   Text(
-                    member.name,
-                    maxLines: 2,
+                    subtitle,
+                    maxLines: 1,
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -0.3,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
-                  ),
-                  if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                  if (member.badges.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: member.badges
-                          .map((b) => _HeaderChip(label: b))
-                          .toList(),
-                    ),
-                  ],
-                  const SizedBox(height: 18),
-                  // Wrap: si no entran los botones en la fila, el de editar baja
-                  // de línea en vez de desbordar el ancho de la tarjeta.
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      _HeaderButton(
-                        icon: Icons.medical_information_outlined,
-                        label: member.isPet
-                            ? 'Ficha veterinaria'
-                            : 'Ficha médica',
-                        filled: true,
-                        accent: accent,
-                        onTap: onQuickRecord,
-                        tooltip: 'Ver ficha médica',
-                      ),
-                      if (onEdit != null)
-                        _HeaderButton(
-                          icon: Icons.edit_outlined,
-                          label: 'Editar',
-                          filled: false,
-                          onTap: onEdit,
-                          tooltip: 'Editar perfil',
-                        ),
-                    ],
                   ),
                 ],
-              ),
+                if (member.badges.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: member.badges.map((b) => _HeaderChip(label: b)).toList(),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                // Wrap: si no entran los botones en la fila, el de editar baja
+                // de línea en vez de desbordar el ancho de la tarjeta.
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _HeaderButton(
+                      icon: Icons.medical_information_outlined,
+                      label: member.isPet ? 'Ficha veterinaria' : 'Ficha médica',
+                      filled: true,
+                      accent: accent,
+                      onTap: onQuickRecord,
+                      tooltip: 'Ver ficha médica',
+                    ),
+                    if (onEdit != null)
+                      _HeaderButton(
+                        icon: Icons.edit_outlined,
+                        label: 'Editar',
+                        filled: false,
+                        onTap: onEdit,
+                        tooltip: 'Editar perfil',
+                      ),
+                  ],
+                ),
+              ],
+            ),
             ),
           ),
         ],
@@ -483,11 +502,7 @@ class _HeaderChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
+        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -525,12 +540,7 @@ class _HeaderButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(_smallBorderRadius),
-            border: filled
-                ? null
-                : Border.all(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    width: 1.2,
-                  ),
+            border: filled ? null : Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.2),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -541,11 +551,7 @@ class _HeaderButton extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: fg,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 13),
               ),
             ],
           ),
@@ -568,9 +574,39 @@ class _ClinicalOverviewGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const spacing = 12.0;
+    // El grupo sanguíneo es un dato de personas: en una mascota no aplica.
+    // (El contacto de emergencia tiene su propia tarjeta.)
+    final tiles = <_OverviewTile>[
+      if (!member.isPet)
+        _OverviewTile(
+          icon: Icons.bloodtype_outlined,
+          label: 'TIPO DE SANGRE',
+          value: member.bloodType,
+        ),
+      _OverviewTile(
+        icon: Icons.warning_amber_rounded,
+        label: 'ALERGIAS',
+        value: member.allergies,
+        bgColor: _alertRed,
+      ),
+      _OverviewTile(
+        icon: Icons.event_available_outlined,
+        label: 'ÚLTIMO CHEQUEO',
+        value: member.lastCheckup,
+      ),
+      if (member.insurance != null)
+        _OverviewTile(
+          icon: Icons.health_and_safety_outlined,
+          label: 'OBRA SOCIAL',
+          value: member.insurance!,
+        ),
+    ];
+
     // Wrap en vez de GridView con aspect ratio fijo: la altura de cada
     // tarjeta la define su contenido, así el texto no se corta en pantallas
-    // chicas ni con el tamaño de fuente del sistema aumentado.
+    // chicas ni con el tamaño de fuente del sistema aumentado. Con una
+    // cantidad impar de casilleros, el último ocupa todo el ancho para no
+    // quedar suelto a la izquierda.
     return LayoutBuilder(
       builder: (context, constraints) {
         final halfWidth = (constraints.maxWidth - spacing) / 2;
@@ -578,42 +614,10 @@ class _ClinicalOverviewGrid extends StatelessWidget {
           spacing: spacing,
           runSpacing: spacing,
           children: [
-            // El grupo sanguíneo es un dato de personas: en una mascota no
-            // aplica. (El contacto de emergencia tiene su propia tarjeta.)
-            if (!member.isPet)
+            for (var i = 0; i < tiles.length; i++)
               SizedBox(
-                width: halfWidth,
-                child: _OverviewTile(
-                  icon: Icons.bloodtype_outlined,
-                  label: 'TIPO DE SANGRE',
-                  value: member.bloodType,
-                ),
-              ),
-            SizedBox(
-              width: halfWidth,
-              child: _OverviewTile(
-                icon: Icons.warning_amber_rounded,
-                label: 'ALERGIAS',
-                value: member.allergies,
-                bgColor: _alertRed,
-              ),
-            ),
-            SizedBox(
-              width: halfWidth,
-              child: _OverviewTile(
-                icon: Icons.event_available_outlined,
-                label: 'ÚLTIMO CHEQUEO',
-                value: member.lastCheckup,
-              ),
-            ),
-            if (member.insurance != null)
-              SizedBox(
-                width: halfWidth,
-                child: _OverviewTile(
-                  icon: Icons.health_and_safety_outlined,
-                  label: 'OBRA SOCIAL',
-                  value: member.insurance!,
-                ),
+                width: (tiles.length.isOdd && i == tiles.length - 1) ? constraints.maxWidth : halfWidth,
+                child: tiles[i],
               ),
           ],
         );
@@ -627,12 +631,7 @@ class _OverviewTile extends StatelessWidget {
   final String label;
   final String value;
   final Color? bgColor;
-  const _OverviewTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.bgColor,
-  });
+  const _OverviewTile({required this.icon, required this.label, required this.value, this.bgColor});
 
   @override
   Widget build(BuildContext context) {
@@ -651,11 +650,7 @@ class _OverviewTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                icon,
-                size: 16,
-                color: onColor ? Colors.white70 : SaluteColors.brownOrange,
-              ),
+              Icon(icon, size: 16, color: onColor ? Colors.white70 : SaluteColors.brownOrange),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -663,9 +658,9 @@ class _OverviewTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 9.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: onColor ? Colors.white70 : Colors.grey[500],
+                    color: onColor ? Colors.white70 : SaluteColors.textMuted,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -690,12 +685,14 @@ class _OverviewTile extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EMERGENCY CARD (mismo comportamiento que el Protocolo de Emergencia del Diario)
+// PROTOCOLO DE EMERGENCIA
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Contacto de emergencia del perfil. Igual que en el Diario: con un contacto
-/// SOS configurado, tocar la tarjeta (o el botón verde) abre el marcador para
-/// llamarlo y el lápiz permite cambiarlo; sin contacto, ofrece configurarlo.
+/// "Protocolo de Emergencia": a quién avisa el botón rojo SOS. Con un contacto
+/// configurado muestra su nombre y teléfono (tocar la fila o el botón verde
+/// abre el marcador; el lápiz lo cambia); sin contacto, ofrece configurarlo.
+/// En el perfil de otro familiar (sin permiso para editar) solo se muestra lo
+/// que diga su ficha.
 class _EmergencyCard extends StatelessWidget {
   final String name;
   final String phone;
@@ -711,104 +708,99 @@ class _EmergencyCard extends StatelessWidget {
     this.onConfigure,
   });
 
+  static const _description =
+      'Elegí a la persona a la que avisamos si necesitás ayuda. El botón rojo SOS, '
+      'que está en todas las pantallas, le manda un mensaje con tu ubicación.';
+
   bool get _hasContact => onCall != null && phone.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
-    if (_hasContact) return _buildContact(context);
-    if (onConfigure != null) return _buildEmpty(context);
-    return _buildReadOnly();
+    if (!_hasContact && onConfigure == null) return _buildReadOnly();
+
+    return Container(
+      width: double.infinity,
+      padding: _cardPadding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_borderRadius),
+        boxShadow: _softShadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: SaluteColors.lightGreen.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.emergency_outlined, color: SaluteColors.primaryGreen, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Protocolo de Emergencia',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.black87),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _description,
+            style: TextStyle(fontSize: 13, color: SaluteColors.textMuted, height: 1.4, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 16),
+          if (_hasContact) _buildContact() else _buildConfigureButton(),
+        ],
+      ),
+    );
   }
 
-  Widget _buildContact(BuildContext context) {
-    final displayName = name.trim().isNotEmpty
-        ? name.trim()
-        : 'Contacto de emergencia';
+  Widget _buildContact() {
+    final displayName = name.trim().isNotEmpty ? name.trim() : 'Contacto de emergencia';
     return Semantics(
       button: true,
       label: 'Llamar a $displayName',
       child: Material(
-        color: SaluteColors.primaryGreen,
-        borderRadius: BorderRadius.circular(_borderRadius),
+        color: SaluteColors.bgColor,
+        borderRadius: BorderRadius.circular(_smallBorderRadius),
         child: InkWell(
           onTap: onCall,
-          borderRadius: BorderRadius.circular(_borderRadius),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(_borderRadius),
-              boxShadow: [
-                BoxShadow(
-                  color: SaluteColors.primaryGreen.withValues(alpha: 0.25),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
+          borderRadius: BorderRadius.circular(_smallBorderRadius),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
             child: Row(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
-                  ),
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: SaluteColors.primaryGreen.withValues(alpha: 0.15),
                   child: Text(
                     displayName[0].toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 20,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: SaluteColors.primaryGreen),
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.emergency_outlined,
-                            size: 13,
-                            color: Colors.white70,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            'CONTACTO DE EMERGENCIA',
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white.withValues(alpha: 0.75),
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
                       Text(
                         displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                        ),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.black87),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         phone,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: SaluteColors.textMuted),
                       ),
                     ],
                   ),
@@ -817,21 +809,14 @@ class _EmergencyCard extends StatelessWidget {
                   IconButton(
                     onPressed: onConfigure,
                     icon: const Icon(Icons.edit_outlined, size: 20),
-                    color: Colors.white70,
+                    color: SaluteColors.textMuted,
                     tooltip: 'Cambiar contacto',
                   ),
                 Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.call,
-                    color: SaluteColors.primaryGreen,
-                    size: 22,
-                  ),
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(color: SaluteColors.primaryGreen, shape: BoxShape.circle),
+                  child: const Icon(Icons.call, color: Colors.white, size: 20),
                 ),
               ],
             ),
@@ -841,80 +826,32 @@ class _EmergencyCard extends StatelessWidget {
     );
   }
 
-  Widget _buildEmpty(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: SaluteColors.lightGreen.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(_borderRadius),
-        border: Border.all(
-          color: SaluteColors.lightGreen.withValues(alpha: 0.7),
-          width: 1.5,
+  Widget _buildConfigureButton() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 50),
+      child: FilledButton.icon(
+        onPressed: onConfigure,
+        icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+        label: const Text('CONFIGURAR S.O.S.', style: TextStyle(fontWeight: FontWeight.w800)),
+        style: FilledButton.styleFrom(
+          backgroundColor: SaluteColors.primaryGreen,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_smallBorderRadius)),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.emergency_outlined,
-                color: SaluteColors.primaryGreen,
-                size: 24,
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Contacto de emergencia',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Todavía no configuraste a quién llamar en caso de emergencia.',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[700],
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: onConfigure,
-              icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
-              label: const Text(
-                'CONFIGURAR S.O.S.',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
 
   /// Perfil de otro familiar: se muestra lo que diga su ficha, sin llamar.
   Widget _buildReadOnly() {
-    return _OverviewTile(
-      icon: Icons.emergency_outlined,
-      label: 'EMERGENCIA',
-      value: fallbackText.isNotEmpty ? fallbackText : 'Sin configurar',
-      bgColor: SaluteColors.primaryGreen,
+    return SizedBox(
+      width: double.infinity,
+      child: _OverviewTile(
+        icon: Icons.emergency_outlined,
+        label: 'EMERGENCIA',
+        value: fallbackText.isNotEmpty ? fallbackText : 'Sin configurar',
+        bgColor: SaluteColors.primaryGreen,
+      ),
     );
   }
 }
@@ -966,20 +903,10 @@ class _ActionBanner extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
                   ],
                 ),
               ),
@@ -1066,11 +993,7 @@ class _MedicationItem extends StatelessWidget {
                     color: SaluteColors.lightGreen.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(_smallBorderRadius),
                   ),
-                  child: const Icon(
-                    Icons.medication_outlined,
-                    color: SaluteColors.primaryGreen,
-                    size: 24,
-                  ),
+                  child: const Icon(Icons.medication_outlined, color: SaluteColors.primaryGreen, size: 24),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -1079,32 +1002,19 @@ class _MedicationItem extends StatelessWidget {
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: Colors.black87,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black87),
                       ),
                       const SizedBox(height: 8),
                       if (isChronic)
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 3,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                           decoration: BoxDecoration(
-                            color: SaluteColors.lightGreen.withValues(
-                              alpha: 0.6,
-                            ),
+                            color: SaluteColors.lightGreen.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
                             'Crónico',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: SaluteColors.primaryGreen,
-                            ),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SaluteColors.primaryGreen),
                           ),
                         )
                       else
@@ -1128,14 +1038,10 @@ class _MedicationItem extends StatelessWidget {
                     textAlign: TextAlign.end,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: SaluteColors.textMuted),
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.grey, size: 22),
+                const Icon(Icons.chevron_right, color: SaluteColors.textMuted, size: 22),
               ],
             ),
           ),
@@ -1165,11 +1071,7 @@ class _EmptySectionHint extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(
-          color: Colors.grey[500],
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-        ),
+        style: TextStyle(color: SaluteColors.textMuted, fontSize: 13, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -1192,10 +1094,7 @@ class _WellbeingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: SaluteColors.lightGreen.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(_borderRadius),
-        border: Border.all(
-          color: SaluteColors.lightGreen.withValues(alpha: 0.7),
-          width: 1,
-        ),
+        border: Border.all(color: SaluteColors.lightGreen.withValues(alpha: 0.7), width: 1),
       ),
       child: Row(
         children: [
@@ -1208,12 +1107,8 @@ class _WellbeingCard extends StatelessWidget {
               boxShadow: _softShadow(0.05),
             ),
             child: Icon(
-              member.isPet
-                  ? Icons.monitor_weight_outlined
-                  : Icons.monitor_heart,
-              color: member.isPet
-                  ? SaluteColors.primaryGreen
-                  : const Color(0xFFE74C3C),
+              member.isPet ? Icons.monitor_weight_outlined : Icons.monitor_heart,
+              color: member.isPet ? SaluteColors.primaryGreen : SaluteColors.danger,
               size: 24,
             ),
           ),
@@ -1225,20 +1120,16 @@ class _WellbeingCard extends StatelessWidget {
                 Text(
                   member.wellbeingLabel,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: Colors.grey[500],
+                    color: SaluteColors.textMuted,
                     letterSpacing: 0.6,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   member.wellbeingTitle,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: SaluteColors.primaryGreen,
-                  ),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: SaluteColors.primaryGreen),
                 ),
               ],
             ),
@@ -1252,11 +1143,7 @@ class _WellbeingCard extends StatelessWidget {
             ),
             child: Text(
               member.wellbeingValue,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.black87),
             ),
           ),
         ],
@@ -1266,9 +1153,7 @@ class _WellbeingCard extends StatelessWidget {
     if (onTap == null) return card;
     return Semantics(
       button: true,
-      label: member.isPet
-          ? 'Ver historial de peso'
-          : 'Ver métricas de bienestar',
+      label: member.isPet ? 'Ver historial de peso' : 'Ver métricas de bienestar',
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(_borderRadius),
@@ -1307,7 +1192,7 @@ class _AlertCard extends StatelessWidget {
             color: bgColor.withValues(alpha: 0.25),
             blurRadius: 12,
             offset: const Offset(0, 4),
-          ),
+          )
         ],
       ),
       child: Row(
@@ -1320,7 +1205,7 @@ class _AlertCard extends StatelessWidget {
                   tag,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
                   ),
@@ -1328,11 +1213,7 @@ class _AlertCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1354,11 +1235,7 @@ class _AlertCard extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(
-              icon,
-              color: Colors.white.withValues(alpha: 0.95),
-              size: 26,
-            ),
+            child: Icon(icon, color: Colors.white.withValues(alpha: 0.95), size: 26),
           ),
         ],
       ),

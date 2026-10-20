@@ -277,9 +277,10 @@ class _LoginPageState extends State<LoginPage> {
               _error = null;
             }),
             suffixIcon: IconButton(
+              tooltip: 'Mostrar u ocultar contraseña',
               icon: Icon(
                 _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: Colors.grey[500],
+                color: SaluteColors.textMuted,
                 size: 22,
               ),
               onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -290,10 +291,13 @@ class _LoginPageState extends State<LoginPage> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: _loading ? null : _forgotPassword,
-              style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(48, 48),
+              ),
               child: const Text(
                 '¿Olvidaste tu contraseña?',
-                style: TextStyle(color: SaluteColors.primaryGreen, fontSize: 12.5, fontWeight: FontWeight.w700),
+                style: TextStyle(color: SaluteColors.primaryGreen, fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -336,7 +340,7 @@ class _LoginPageState extends State<LoginPage> {
       style: const TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+        hintStyle: TextStyle(color: SaluteColors.textMuted, fontSize: 15),
         errorText: errorText,
         errorMaxLines: 3,
         filled: true,
@@ -379,10 +383,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
       ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: FilledButton(
+      child: ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 56), child: FilledButton(
           onPressed: _loading ? null : _login,
           style: FilledButton.styleFrom(
             backgroundColor: SaluteColors.primaryGreen,
@@ -413,10 +414,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildQuickLoginButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: OutlinedButton.icon(
+    return ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 52), child: OutlinedButton.icon(
         onPressed: _loading ? null : _quickLogin,
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: SaluteColors.primaryGreen, width: 1.4),
@@ -463,7 +461,7 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
         color: SaluteColors.primaryGreen,
         letterSpacing: 1,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -129,5 +130,49 @@ class CryptoService {
     final box = SecretBox(cipherText, nonce: nonce, mac: mac);
     final plaintext = await _algorithm.decrypt(box, secretKey: key);
     return jsonDecode(utf8.decode(plaintext)) as Map<String, dynamic>;
+  }
+
+  // ── Archivos (adjuntos) ────────────────────────────────────────────────
+  //
+  // Mismo AES-256-GCM y misma clave que los detalles del historial.
+  // Formato del archivo: "SLT1" (4 bytes, identifica un adjunto cifrado y
+  // deja distinguir los archivos viejos sin cifrar) + nonce (12) +
+  // texto cifrado + MAC (16).
+
+  static const List<int> _fileMagic = [0x53, 0x4C, 0x54, 0x31]; // "SLT1"
+
+  /// ¿Estos bytes son un adjunto ya cifrado con [encryptBytes]?
+  static bool isEncryptedFile(List<int> bytes) {
+    if (bytes.length < _fileMagic.length + 12 + 16) return false;
+    for (var i = 0; i < _fileMagic.length; i++) {
+      if (bytes[i] != _fileMagic[i]) return false;
+    }
+    return true;
+  }
+
+  Future<Uint8List> encryptBytes(List<int> plain) async {
+    final key = await _getOrCreateKey();
+    final box = await _algorithm.encrypt(plain, secretKey: key);
+    final body = box.concatenation(); // nonce + cifrado + mac
+    final out = Uint8List(_fileMagic.length + body.length);
+    out.setRange(0, _fileMagic.length, _fileMagic);
+    out.setRange(_fileMagic.length, out.length, body);
+    return out;
+  }
+
+  /// Inverso de [encryptBytes]. Lanza si los bytes no son un adjunto
+  /// cifrado o si la clave no coincide (MAC inválido).
+  Future<Uint8List> decryptBytes(List<int> encrypted) async {
+    if (!isEncryptedFile(encrypted)) {
+      throw const FormatException('El archivo no está cifrado con el formato esperado.');
+    }
+    final key = await _getOrCreateKey();
+    final box = SecretBox.fromConcatenation(
+      encrypted.sublist(_fileMagic.length),
+      nonceLength: _algorithm.nonceLength,
+      macLength: 16,
+    );
+    final plain = await _algorithm.decrypt(box, secretKey: key);
+    return Uint8List.fromList(plain);
   }
 }

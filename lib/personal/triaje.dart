@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:saluteapp/components/ai_insight_card.dart';
 import 'package:saluteapp/components/app_header.dart';
+import 'package:saluteapp/components/voice_buttons.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/medical_record.dart';
+import 'package:saluteapp/core/services/ai_insight_service.dart';
+import 'package:saluteapp/core/services/health_red_flags.dart';
 import 'package:saluteapp/core/services/medical_record_service.dart';
+import 'package:saluteapp/map_screen.dart';
 
 /// Bitácora de triaje de un perfil puntual (persona o mascota).
 /// Cada "GUARDAR EN DIARIO PRIVADO" crea un [MedicalRecord] cifrado en
@@ -49,6 +54,67 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
   final _objectiveCtrl = TextEditingController();
   final _assessmentCtrl = TextEditingController();
   final _planCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  final _insightCtrl = AiInsightController();
+
+  /// {sistema: {sintoma, especificador}} con lo elegido en "Sistemas de
+  /// síntomas". Antes no se guardaba ni se usaba.
+  Map<String, Map<String, String>> _principalSymptoms() {
+    return {
+      for (final e in _selectedPrimaryBySystem.entries)
+        e.key: {
+          'sintoma': e.value,
+          if (_selectedSpecifierByPrimary[e.value] != null)
+            'especificador': _selectedSpecifierByPrimary[e.value]!,
+        },
+    };
+  }
+
+  Map<String, dynamic> _triageAiData() => AiPayload.clean({
+    'nivelAutoclasificado': _triajeLevel,
+    'eva_0_a_10': _evaDolor.round(),
+    'vitales': {
+      'frecuenciaCardiacaBpm': _heartRate,
+      'temperaturaC': _temperature,
+      'saturacionO2Pct': _oxygenSat,
+      'presionArterialMmHg': _bloodPressure,
+    },
+    'sintomasPrincipales': _principalSymptoms(),
+    'otrosSintomas': _selectedSymptoms.toList(),
+    'soap': {
+      'subjetivo': _subjectiveCtrl.text,
+      'objetivo': _objectiveCtrl.text,
+      'apreciacion': _assessmentCtrl.text,
+      'plan': _planCtrl.text,
+    },
+  });
+
+  bool get _triageAiReady =>
+      _selectedSymptoms.isNotEmpty ||
+          _selectedPrimaryBySystem.isNotEmpty ||
+          _subjectiveCtrl.text.trim().isNotEmpty;
+
+  List<String> get _triageRedFlags => HealthRedFlags.triage(
+    level: _triajeLevel,
+    eva: _evaDolor,
+    heartRate: _heartRate,
+    temperature: _temperature,
+    oxygenSat: _oxygenSat,
+    bloodPressure: _bloodPressure,
+    primaryBySystem: _selectedPrimaryBySystem,
+    specifierByPrimary: _selectedSpecifierByPrimary,
+  );
+
+  void _scrollToInsight() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollCtrl.hasClients) return;
+      _scrollCtrl.animateTo(
+        _scrollCtrl.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+      );
+    });
+  }
 
   @override
   void initState() {
@@ -70,10 +136,10 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
         _triageTimeline = triageRecords
             .map(
               (r) => _TriageEntry(
-                timestamp: r.date,
-                level: (r.details['nivel'] as num?)?.toInt() ?? 3,
-              ),
-            )
+            timestamp: r.date,
+            level: (r.details['nivel'] as num?)?.toInt() ?? 3,
+          ),
+        )
             .toList();
         if (triageRecords.isNotEmpty) {
           final latest =
@@ -107,6 +173,7 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
     _objectiveCtrl.dispose();
     _assessmentCtrl.dispose();
     _planCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -205,8 +272,8 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
   List<_TriageEntry> get _entries48h {
     final cutoff = DateTime.now().subtract(const Duration(hours: 48));
     final list =
-        _triageTimeline.where((e) => e.timestamp.isAfter(cutoff)).toList()
-          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    _triageTimeline.where((e) => e.timestamp.isAfter(cutoff)).toList()
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
     return list;
   }
 
@@ -223,6 +290,7 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
       'objetivo': _objectiveCtrl.text,
       'apreciacion': _assessmentCtrl.text,
       'plan': _planCtrl.text,
+      'sintomasPrincipales': _principalSymptoms(),
     };
   }
 
@@ -255,6 +323,7 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
           content: Text('Guardado en el diario privado (cifrado).'),
         ),
       );
+      _insightCtrl.run();
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -276,6 +345,15 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
     );
   }
 
+  void _goToGuardMap() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            SaluteMapScreen(onBackToDashboard: widget.onBackToDashboard),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -289,6 +367,7 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
             ),
             Expanded(
               child: SingleChildScrollView(
+                controller: _scrollCtrl,
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,6 +450,29 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
                       assessmentCtrl: _assessmentCtrl,
                       planCtrl: _planCtrl,
                     ),
+                    const SizedBox(height: 20),
+                    ListenableBuilder(
+                      // Se reconstruye mientras escribís: actualiza "listo" y
+                      // las señales de alarma en vivo.
+                      listenable: Listenable.merge([
+                        _subjectiveCtrl,
+                        _objectiveCtrl,
+                        _assessmentCtrl,
+                        _planCtrl,
+                      ]),
+                      builder: (context, _) => AiInsightCard(
+                        key: ValueKey('ai-triaje-${widget.profileId}'),
+                        kind: 'triaje',
+                        profileId: widget.profileId,
+                        controller: _insightCtrl,
+                        buildData: _triageAiData,
+                        redFlags: _triageRedFlags,
+                        ready: _triageAiReady,
+                        notReadyHint:
+                        'Cargá al menos un síntoma o describí qué sentís para poder analizar.',
+                        onStateChanged: _scrollToInsight,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                   ],
                 ),
@@ -381,6 +483,7 @@ class _BitacoraTriajeScreenState extends State<BitacoraTriajeScreen> {
               saving: _saving,
               onSavePrivateDiary: _saveInPrivateDiary,
               onGenerateGuardSheet: _generateGuardShiftSheet,
+              onGoToGuardMap: _goToGuardMap,
             ),
           ],
         ),
@@ -442,13 +545,15 @@ class _TimelineTrendSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'CRONOLOGIA (ULTIMAS 48H)',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                  color: Colors.black87,
+              Flexible(
+                child: const Text(
+                  'CRONOLOGIA (ULTIMAS 48H)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
               Container(
@@ -463,7 +568,7 @@ class _TimelineTrendSection extends StatelessWidget {
                 child: Text(
                   _trendText(),
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: Colors.grey[700],
                   ),
@@ -479,7 +584,7 @@ class _TimelineTrendSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ...recent.map(
-            (e) => Padding(
+                (e) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
@@ -490,7 +595,7 @@ class _TimelineTrendSection extends StatelessWidget {
                       color: e.level == 1
                           ? const Color(0xFFCC2929)
                           : e.level == 2
-                          ? const Color(0xFFE67E22)
+                          ? SaluteColors.warning
                           : SaluteColors.primaryGreen,
                       shape: BoxShape.circle,
                       boxShadow: [
@@ -498,10 +603,10 @@ class _TimelineTrendSection extends StatelessWidget {
                           color: e.level == 1
                               ? const Color(0xFFCC2929).withValues(alpha: 0.3)
                               : e.level == 2
-                              ? const Color(0xFFE67E22).withValues(alpha: 0.3)
+                              ? SaluteColors.warning.withValues(alpha: 0.3)
                               : SaluteColors.primaryGreen.withValues(
-                                  alpha: 0.3,
-                                ),
+                            alpha: 0.3,
+                          ),
                           blurRadius: 4,
                         ),
                       ],
@@ -523,8 +628,8 @@ class _TimelineTrendSection extends StatelessWidget {
                         Text(
                           'Nivel ${e.level}',
                           style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[600],
+                            fontSize: 12,
+                            color: SaluteColors.textMuted,
                           ),
                         ),
                       ],
@@ -539,7 +644,7 @@ class _TimelineTrendSection extends StatelessWidget {
                       color: e.level == 1
                           ? const Color(0xFFCC2929).withValues(alpha: 0.1)
                           : e.level == 2
-                          ? const Color(0xFFE67E22).withValues(alpha: 0.1)
+                          ? SaluteColors.warning.withValues(alpha: 0.1)
                           : SaluteColors.primaryGreen.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
@@ -550,12 +655,12 @@ class _TimelineTrendSection extends StatelessWidget {
                           ? 'URGENCIA'
                           : 'ESTABLE',
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: e.level == 1
                             ? const Color(0xFFCC2929)
                             : e.level == 2
-                            ? const Color(0xFFE67E22)
+                            ? SaluteColors.warning
                             : SaluteColors.primaryGreen,
                       ),
                     ),
@@ -635,7 +740,7 @@ class _ClasificacionSection extends StatelessWidget {
       case 1:
         return const Color(0xFFCC2929);
       case 2:
-        return const Color(0xFFE67E22);
+        return SaluteColors.warning;
       default:
         return SaluteColors.primaryGreen;
     }
@@ -671,9 +776,9 @@ class _ClasificacionSection extends StatelessWidget {
         Text(
           'CLASIFICACION ACTUAL',
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: Colors.grey[500],
+            color: SaluteColors.textMuted,
             letterSpacing: 1,
           ),
         ),
@@ -725,6 +830,7 @@ class _ClasificacionSection extends StatelessWidget {
                 ),
               ),
               IconButton(
+                tooltip: 'Cambiar',
                 onPressed: onSwap,
                 icon: const Icon(
                   Icons.swap_horiz,
@@ -753,7 +859,7 @@ class _ClasificacionSection extends StatelessWidget {
                 label: '2: URGENCIA',
                 selected: selectedLevel == 2,
                 onTap: () => onLevelChanged(2),
-                selectedColor: const Color(0xFFE67E22),
+                selectedColor: SaluteColors.warning,
               ),
             ),
             const SizedBox(width: 8),
@@ -802,13 +908,20 @@ class _LevelChip extends StatelessWidget {
               color: selected ? selectedColor : const Color(0xFFE0E0E0),
             ),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : Colors.black87,
-              letterSpacing: 0.3,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : Colors.black87,
+                  letterSpacing: 0.3,
+                ),
+              ),
             ),
           ),
         ),
@@ -892,9 +1005,9 @@ class _InfoCell extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 9,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Colors.grey[400],
+                color: SaluteColors.textMuted,
                 letterSpacing: 0.8,
               ),
             ),
@@ -934,23 +1047,24 @@ class _VitalesGrid extends StatelessWidget {
   // Umbrales simples de referencia, solo para dar una pista visual.
   // No reemplaza criterio médico.
   (String, Color) get _heartRateStatus {
-    if (heartRate == null) return ('Sin datos', Colors.grey);
-    if (heartRate! < 60 || heartRate! > 100)
-      return ('Fuera de rango', Colors.orange);
-    return ('Normal (Estable)', Colors.grey);
+    if (heartRate == null) return ('Sin datos', SaluteColors.textMuted);
+    if (heartRate! < 60 || heartRate! > 100) {
+      return ('Fuera de rango', SaluteColors.warning);
+    }
+    return ('Normal (Estable)', SaluteColors.textMuted);
   }
 
   (String, Color) get _temperatureStatus {
-    if (temperature == null) return ('Sin datos', Colors.grey);
-    if (temperature! >= 37.8) return ('Febrícula', Colors.orange);
-    if (temperature! < 35.5) return ('Hipotermia', Colors.orange);
-    return ('Normal', Colors.grey);
+    if (temperature == null) return ('Sin datos', SaluteColors.textMuted);
+    if (temperature! >= 37.8) return ('Febrícula', SaluteColors.warning);
+    if (temperature! < 35.5) return ('Hipotermia', SaluteColors.warning);
+    return ('Normal', SaluteColors.textMuted);
   }
 
   (String, Color) get _oxygenStatus {
-    if (oxygenSat == null) return ('Sin datos', Colors.grey);
-    if (oxygenSat! < 95) return ('Bajo', Colors.orange);
-    return ('Óptimo', Colors.grey);
+    if (oxygenSat == null) return ('Sin datos', SaluteColors.textMuted);
+    if (oxygenSat! < 95) return ('Bajo', SaluteColors.warning);
+    return ('Óptimo', SaluteColors.textMuted);
   }
 
   @override
@@ -978,16 +1092,16 @@ class _VitalesGrid extends StatelessWidget {
             Expanded(
               child: _VitalCard(
                 icon: Icons.thermostat_outlined,
-                iconColor: Colors.orange,
+                iconColor: SaluteColors.warning,
                 unit: '°C',
                 value: temperature != null
                     ? temperature!.toStringAsFixed(1)
                     : '—',
                 label: tempStatus.$1,
                 labelColor: tempStatus.$2,
-                unitColor: Colors.orange,
-                valueColor: tempStatus.$2 == Colors.orange
-                    ? Colors.orange
+                unitColor: SaluteColors.warning,
+                valueColor: tempStatus.$2 == SaluteColors.warning
+                    ? SaluteColors.warning
                     : null,
                 onTap: onEditTemperature,
               ),
@@ -1019,7 +1133,7 @@ class _VitalesGrid extends StatelessWidget {
                 label: bloodPressure?.isNotEmpty == true
                     ? 'Cargada'
                     : 'Sin datos',
-                labelColor: Colors.grey,
+                labelColor: SaluteColors.textMuted,
                 unitColor: SaluteColors.primaryGreen,
                 onTap: onEditBloodPressure,
               ),
@@ -1055,7 +1169,7 @@ class _VitalCard extends StatelessWidget {
   });
 
   bool get _isAbnormal =>
-      labelColor == Colors.orange || labelColor == Colors.red;
+      labelColor == SaluteColors.warning || labelColor == SaluteColors.danger;
 
   @override
   Widget build(BuildContext context) {
@@ -1068,7 +1182,7 @@ class _VitalCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: _isAbnormal
-                ? Colors.orange.withValues(alpha: 0.3)
+                ? SaluteColors.warning.withValues(alpha: 0.3)
                 : Colors.transparent,
             width: 1.5,
           ),
@@ -1100,13 +1214,13 @@ class _VitalCard extends StatelessWidget {
                     width: 20,
                     height: 20,
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.2),
+                      color: SaluteColors.warning.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.warning_outlined,
                       size: 12,
-                      color: Colors.orange,
+                      color: SaluteColors.warning,
                     ),
                   )
                 else
@@ -1120,7 +1234,7 @@ class _VitalCard extends StatelessWidget {
                     child: const Icon(
                       Icons.check,
                       size: 12,
-                      color: Color(0xFF4CAF50),
+                      color: SaluteColors.primaryGreen,
                     ),
                   ),
               ],
@@ -1138,7 +1252,7 @@ class _VitalCard extends StatelessWidget {
             Text(
               unit,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: unitColor,
                 letterSpacing: 0.5,
@@ -1148,7 +1262,7 @@ class _VitalCard extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 color: labelColor,
                 fontWeight: FontWeight.w600,
               ),
@@ -1180,21 +1294,25 @@ class _EVASection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'ESCALA EVA (DOLOR)',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey[500],
-                  letterSpacing: 0.9,
+              Flexible(
+                child: Text(
+                  'ESCALA EVA (DOLOR)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: SaluteColors.textMuted,
+                    letterSpacing: 0.9,
+                  ),
                 ),
               ),
-              Text(
-                value.round().toString(),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: SaluteColors.primaryGreen,
+              Flexible(
+                child: Text(
+                  value.round().toString(),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: SaluteColors.primaryGreen,
+                  ),
                 ),
               ),
             ],
@@ -1212,28 +1330,34 @@ class _EVASection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '0: Sin dolor',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  '0: Sin dolor',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: SaluteColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              Text(
-                '5: Moderado',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  '5: Moderado',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: SaluteColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              Text(
-                '10: Insoportable',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  '10: Insoportable',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: SaluteColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -1388,15 +1512,15 @@ class _SistemasSection extends StatelessWidget {
         Text(
           'SISTEMAS DE SINTOMAS',
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: Colors.grey[500],
+            color: SaluteColors.textMuted,
             letterSpacing: 1,
           ),
         ),
         const SizedBox(height: 10),
         ..._systems.map(
-          (sys) => Padding(
+              (sys) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: _SystemAccordion(
               system: sys,
@@ -1464,7 +1588,7 @@ class _SystemAccordion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedPrimarySymptom = system.primarySymptoms.firstWhere(
-      (s) => s.name == selectedPrimary,
+          (s) => s.name == selectedPrimary,
       orElse: () => const _PrimarySymptom(name: '', specifiers: []),
     );
 
@@ -1496,20 +1620,21 @@ class _SystemAccordion extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    system.name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                  Expanded(
+                    child: Text(
+                      system.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
-                  const Spacer(),
                   Icon(
                     isExpanded
                         ? Icons.keyboard_arrow_up
                         : Icons.keyboard_arrow_down,
-                    color: Colors.grey[400],
+                    color: SaluteColors.textMuted,
                     size: 22,
                   ),
                 ],
@@ -1529,9 +1654,9 @@ class _SystemAccordion extends StatelessWidget {
                   Text(
                     'Sintomas principales',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Colors.grey[500],
+                      color: SaluteColors.textMuted,
                       letterSpacing: 0.8,
                     ),
                   ),
@@ -1542,11 +1667,11 @@ class _SystemAccordion extends StatelessWidget {
                     children: system.primarySymptoms
                         .map(
                           (s) => _SymptomChip(
-                            label: s.name,
-                            selected: selectedPrimary == s.name,
-                            onTap: () => onTogglePrimarySymptom(s.name),
-                          ),
-                        )
+                        label: s.name,
+                        selected: selectedPrimary == s.name,
+                        onTap: () => onTogglePrimarySymptom(s.name),
+                      ),
+                    )
                         .toList(),
                   ),
                   if (selectedPrimarySymptom.name.isNotEmpty) ...[
@@ -1554,9 +1679,9 @@ class _SystemAccordion extends StatelessWidget {
                     Text(
                       'Especificadores tecnicos',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.grey[500],
+                        color: SaluteColors.textMuted,
                         letterSpacing: 0.8,
                       ),
                     ),
@@ -1567,17 +1692,17 @@ class _SystemAccordion extends StatelessWidget {
                       children: selectedPrimarySymptom.specifiers
                           .map(
                             (specifier) => _SymptomChip(
-                              label: specifier,
-                              selected:
-                                  selectedSpecifierByPrimary[selectedPrimarySymptom
-                                      .name] ==
-                                  specifier,
-                              onTap: () => onToggleSpecifier(
-                                selectedPrimarySymptom.name,
-                                specifier,
-                              ),
-                            ),
-                          )
+                          label: specifier,
+                          selected:
+                          selectedSpecifierByPrimary[selectedPrimarySymptom
+                              .name] ==
+                              specifier,
+                          onTap: () => onToggleSpecifier(
+                            selectedPrimarySymptom.name,
+                            specifier,
+                          ),
+                        ),
+                      )
                           .toList(),
                     ),
                   ],
@@ -1586,9 +1711,9 @@ class _SystemAccordion extends StatelessWidget {
                     Text(
                       'Otros',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.grey[500],
+                        color: SaluteColors.textMuted,
                         letterSpacing: 0.8,
                       ),
                     ),
@@ -1599,11 +1724,11 @@ class _SystemAccordion extends StatelessWidget {
                       children: system.otherSymptoms
                           .map(
                             (s) => _SymptomChip(
-                              label: s,
-                              selected: selectedSymptoms.contains(s),
-                              onTap: () => onToggleSymptom(s),
-                            ),
-                          )
+                          label: s,
+                          selected: selectedSymptoms.contains(s),
+                          onTap: () => onToggleSymptom(s),
+                        ),
+                      )
                           .toList(),
                     ),
                   ],
@@ -1654,15 +1779,21 @@ class _SymptomChip extends StatelessWidget {
               Icon(
                 selected ? Icons.check_circle : Icons.radio_button_unchecked,
                 size: 14,
-                color: selected ? SaluteColors.primaryGreen : Colors.grey[400],
+                color: selected
+                    ? SaluteColors.primaryGreen
+                    : SaluteColors.textMuted,
               ),
               const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: selected ? SaluteColors.primaryGreen : Colors.black87,
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: selected
+                        ? SaluteColors.primaryGreen
+                        : Colors.black87,
+                  ),
                 ),
               ),
             ],
@@ -1698,13 +1829,44 @@ class _SOAPSection extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Registro Clinico SOAP\nEvolutivo',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: Colors.black87,
-                height: 1.2,
+            const Expanded(
+              child: Text(
+                'Registro Clinico SOAP\nEvolutivo',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: SaluteColors.lightGreen,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.edit_outlined,
+                    size: 14,
+                    color: SaluteColors.primaryGreen,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'EN CURSO',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: SaluteColors.primaryGreen,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1724,7 +1886,7 @@ class _SOAPSection extends StatelessWidget {
           label: 'S (SUBJETIVO)',
           controller: subjectiveCtrl,
           hint:
-              'Que siente el usuario? Texto libre o etiquetas: mareo, nauseas, fatiga.',
+          'Que siente el usuario? Texto libre o etiquetas: mareo, nauseas, fatiga.',
           icon: Icons.sentiment_satisfied_alt_outlined,
         ),
         const SizedBox(height: 14),
@@ -1739,7 +1901,7 @@ class _SOAPSection extends StatelessWidget {
           label: 'A (APRECIACION)',
           controller: assessmentCtrl,
           hint:
-              'Como evoluciono? Ej: Mejor que ayer / Empeoro despues de comer.',
+          'Como evoluciono? Ej: Mejor que ayer / Empeoro despues de comer.',
           icon: Icons.trending_up_outlined,
         ),
         const SizedBox(height: 14),
@@ -1770,7 +1932,7 @@ class _SoapTagChip extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           color: SaluteColors.primaryGreen,
         ),
@@ -1803,13 +1965,15 @@ class _SOAPField extends StatelessWidget {
               Icon(icon, size: 16, color: SaluteColors.primaryGreen),
               const SizedBox(width: 6),
             ],
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: SaluteColors.primaryGreen,
-                letterSpacing: 0.8,
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: SaluteColors.primaryGreen,
+                  letterSpacing: 0.8,
+                ),
               ),
             ),
           ],
@@ -1821,8 +1985,15 @@ class _SOAPField extends StatelessWidget {
           style: const TextStyle(fontSize: 14, color: Colors.black87),
           decoration: InputDecoration(
             hintText: hint,
+            // Dictado por voz: describir síntomas hablando es más fácil.
+            suffixIcon: Align(
+              alignment: Alignment.topRight,
+              widthFactor: 1,
+              heightFactor: 1,
+              child: DictationButton(controller: controller),
+            ),
             hintStyle: TextStyle(
-              color: Colors.grey[400],
+              color: SaluteColors.textMuted,
               fontSize: 13,
               height: 1.5,
             ),
@@ -1884,7 +2055,7 @@ class _SecurityFooter extends StatelessWidget {
               text: TextSpan(
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: SaluteColors.textMuted,
                   height: 1.5,
                 ),
                 children: const [
@@ -1898,7 +2069,7 @@ class _SecurityFooter extends StatelessWidget {
                   ),
                   TextSpan(
                     text:
-                        '. Los datos clinicos solo son visibles para personal autorizado. ',
+                    '. Los datos clinicos solo son visibles para personal autorizado. ',
                   ),
                   TextSpan(
                     text: 'Ver certificado de seguridad.',
@@ -1923,16 +2094,19 @@ class _BottomBar extends StatelessWidget {
   final bool saving;
   final VoidCallback onSavePrivateDiary;
   final VoidCallback onGenerateGuardSheet;
+  final VoidCallback onGoToGuardMap;
 
   const _BottomBar({
     required this.triageLevel,
     required this.saving,
     required this.onSavePrivateDiary,
     required this.onGenerateGuardSheet,
+    required this.onGoToGuardMap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isCodeRed = triageLevel == 1;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1942,20 +2116,22 @@ class _BottomBar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: double.infinity,
-            height: 52,
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              minWidth: double.infinity,
+              minHeight: 52,
+            ),
             child: FilledButton.icon(
               onPressed: saving ? null : onSavePrivateDiary,
               icon: saving
                   ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
                   : const Icon(Icons.lock_outline),
               style: FilledButton.styleFrom(
                 backgroundColor: SaluteColors.primaryGreen,
@@ -1971,20 +2147,40 @@ class _BottomBar extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           if (triageLevel != 3)
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onGenerateGuardSheet,
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('GENERAR FICHA PARA GUARDIA'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 46),
-                  side: const BorderSide(color: Color(0xFFE0E0E0)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onGenerateGuardSheet,
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('GENERAR FICHA PARA GUARDIA'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 46),
+                      side: const BorderSide(color: Color(0xFFE0E0E0)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                if (isCodeRed) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: onGoToGuardMap,
+                      icon: const Icon(Icons.local_hospital_outlined),
+                      label: const Text('IR A MAPA DE GUARDIAS'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 46),
+                        backgroundColor: const Color(0xFFCC2929),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
         ],
       ),

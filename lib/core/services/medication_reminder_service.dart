@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:saluteapp/core/models/medication.dart';
+import 'package:saluteapp/core/services/app_settings_service.dart';
 import 'package:saluteapp/core/services/local_alarm_service.dart';
 import 'package:saluteapp/core/services/medication_service.dart';
 import 'package:saluteapp/core/services/profile_service.dart';
@@ -147,6 +148,8 @@ class MedicationReminderService {
   }) async {
     await LocalAlarmService.instance.ensureInit();
     await cancelFor(medication.id);
+    // Switch de Notificaciones apagado: se cancela lo que hubiera, no se programa nada.
+    if (!AppSettingsService.instance.notificationsEnabled) return;
     final entries = _entriesFor(profileId, profileName, medication, DateTime.now());
     if (entries.isEmpty) return;
     final budget = await _budget();
@@ -163,6 +166,9 @@ class MedicationReminderService {
   /// frecuencia). Si algo falla al leer, NO toca lo ya programado: es
   /// preferible una alerta desactualizada a quedarse sin ninguna.
   Future<void> rescheduleAll({bool force = false}) async {
+    // Switch de Notificaciones apagado: no hay nada que reprogramar (al
+    // apagarlo, `shell.dart` ya canceló todo lo pendiente).
+    if (!AppSettingsService.instance.notificationsEnabled) return;
     final last = _lastRescheduleAt;
     if (!force && last != null && DateTime.now().difference(last) < _rescheduleThrottle) return;
     final myUid = FirebaseAuth.instance.currentUser?.uid;
@@ -201,6 +207,7 @@ class MedicationReminderService {
     required Medication medication,
     required DateTime scheduledAt,
   }) async {
+    if (!AppSettingsService.instance.notificationsEnabled) return;
     final payload = MedReminderPayload(
       kind: ReminderKind.snooze,
       profileId: profileId,
@@ -218,12 +225,14 @@ class MedicationReminderService {
   }
 
   /// Alerta de prueba (a los 5 segundos) para verificar que las
-  /// notificaciones llegan y abren la pantalla de toma.
-  Future<void> sendTest({
+  /// notificaciones llegan y abren la pantalla de toma. Devuelve `false` si
+  /// no se programó porque las notificaciones están apagadas en Configuración.
+  Future<bool> sendTest({
     required String profileId,
     required String profileName,
     required Medication medication,
   }) async {
+    if (!AppSettingsService.instance.notificationsEnabled) return false;
     await LocalAlarmService.instance.schedule(
       id: _stableId('test|${medication.id}'),
       title: 'Prueba: hora de tomar ${medication.name}',
@@ -236,6 +245,7 @@ class MedicationReminderService {
         medicationId: medication.id,
       ).encode(),
     );
+    return true;
   }
 
   // ── Internos ────────────────────────────────────────────────────────

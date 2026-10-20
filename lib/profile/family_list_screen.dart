@@ -70,7 +70,7 @@ class FamilyListScreen extends StatelessWidget {
                         child: Text(
                           'No se pudieron cargar los perfiles.\n${snapshot.error}',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: SaluteColors.textMuted),
                         ),
                       ),
                     );
@@ -125,6 +125,7 @@ class FamilyListScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        tooltip: 'Agregar perfil',
         backgroundColor: SaluteColors.primaryGreen,
         onPressed: () => _openNewProfile(context),
         child: const Icon(Icons.add, color: Colors.white),
@@ -144,7 +145,7 @@ class _SectionLabel extends StatelessWidget {
       style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w700,
-        color: Colors.grey[500],
+        color: SaluteColors.textMuted,
         letterSpacing: 0.6,
       ),
     );
@@ -216,13 +217,15 @@ class _ProfileListTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     profile.relation.isNotEmpty ? profile.relation : (isPet ? 'Mascota' : 'Familiar'),
-                    style: TextStyle(fontSize: DsFontSize.md, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: DsFontSize.md, color: SaluteColors.textMuted),
                   ),
                 ],
               ),
             ),
             if (profile.ownerUid != myUid && !profile.isDependent)
-              Container(
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.28),
+                child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 margin: const EdgeInsets.only(right: 8),
                 decoration: BoxDecoration(
@@ -231,9 +234,11 @@ class _ProfileListTile extends StatelessWidget {
                 ),
                 child: Text(
                   'Cuenta propia',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: SaluteColors.primaryGreen),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SaluteColors.primaryGreen),
                 ),
-              ),
+              )),
             if (canManageSharing)
               IconButton(
                 onPressed: () => _openSharingSheet(context),
@@ -241,11 +246,11 @@ class _ProfileListTile extends StatelessWidget {
                 icon: Icon(
                   profile.sharedWithUids.isEmpty ? Icons.lock_outline : Icons.people_alt_outlined,
                   size: 20,
-                  color: profile.sharedWithUids.isEmpty ? Colors.grey[400] : SaluteColors.primaryGreen,
+                  color: profile.sharedWithUids.isEmpty ? SaluteColors.textMuted : SaluteColors.primaryGreen,
                 ),
               )
             else
-              Icon(Icons.chevron_right, color: Colors.grey[400]),
+              Icon(Icons.chevron_right, color: SaluteColors.textMuted),
           ],
         ),
       ),
@@ -304,7 +309,7 @@ class _SharingSheetState extends State<_SharingSheet> {
             Text(
               'Agenda, métricas, historial, vacunas, medicación y recetas. '
               'Nadie ve esto salvo que lo marques acá.',
-              style: TextStyle(fontSize: DsFontSize.md, color: Colors.grey[600], height: 1.4),
+              style: TextStyle(fontSize: DsFontSize.md, color: SaluteColors.textMuted, height: 1.4),
             ),
             const SizedBox(height: 12),
             for (final member in widget.candidates)
@@ -354,12 +359,12 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.family_restroom, size: 48, color: Colors.grey[350]),
+            Icon(Icons.family_restroom, size: 48, color: SaluteColors.textMuted),
             const SizedBox(height: 16),
             Text(
               'Todavía no agregaste a nadie de tu familia.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600], fontSize: DsFontSize.md),
+              style: TextStyle(color: SaluteColors.textMuted, fontSize: DsFontSize.md),
             ),
             const SizedBox(height: 20),
             FilledButton.icon(

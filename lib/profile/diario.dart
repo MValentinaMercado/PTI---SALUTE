@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:saluteapp/components/active_profile_selector.dart';
 import 'package:saluteapp/components/app_header.dart';
@@ -14,10 +15,9 @@ import 'package:saluteapp/personal/triaje.dart';
 import 'package:saluteapp/personal/tracker.dart';
 import 'package:saluteapp/personal/metricas.dart';
 import 'package:saluteapp/personal/botiquin.dart';
-import 'package:saluteapp/core/contacts.dart';
 import 'package:saluteapp/profile/consultas_screen.dart';
 import 'package:saluteapp/profile/medical_sheet_screen.dart';
-import 'package:saluteapp/personal/tratamientos.dart';
+import 'package:saluteapp/profile/medication_form_screen.dart';
 import 'package:saluteapp/profile/orden.dart';
 import 'package:saluteapp/profile/pet_weight_screen.dart';
 import 'package:saluteapp/profile/vaccine_card_screen.dart';
@@ -33,9 +33,7 @@ FamilyProfile? _requireActiveProfile(BuildContext context) {
   final active = ActiveProfileController.instance.active;
   if (active == null) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Esperá a que cargue tu perfil para continuar.'),
-      ),
+      const SnackBar(content: Text('Esperá a que cargue tu perfil para continuar.')),
     );
   }
   return active;
@@ -47,8 +45,7 @@ Future<void> _openTriaje(BuildContext context) async {
   await Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) =>
-          BitacoraTriajeScreen(profileId: target.id, profileName: target.name),
+      builder: (_) => BitacoraTriajeScreen(profileId: target.id, profileName: target.name),
     ),
   );
 }
@@ -59,8 +56,7 @@ void _openMoodTracker(BuildContext context) {
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) =>
-          MoodTrackerScreen(profileId: target.id, profileName: target.name),
+      builder: (_) => MoodTrackerScreen(profileId: target.id, profileName: target.name),
     ),
   );
 }
@@ -83,14 +79,16 @@ void _openMedicalSheet(BuildContext context, {bool startWithShare = false}) {
   );
 }
 
-/// Plan de tratamientos del perfil activo. El alta sigue abriendo el
-/// formulario existente desde la nueva pantalla.
-void _openTreatments(BuildContext context) {
+/// Alta de un tratamiento (medicación con horarios y alertas) para el
+/// perfil activo. Es distinto de Mi Botiquín, que es solo inventario.
+void _openNewTreatment(BuildContext context) {
   final target = _requireActiveProfile(context);
   if (target == null) return;
   Navigator.push(
     context,
-    MaterialPageRoute(builder: (_) => TreatmentsScreen(profile: target)),
+    MaterialPageRoute(
+      builder: (_) => MedicationFormScreen(profileId: target.id, profileName: target.name),
+    ),
   );
 }
 
@@ -102,8 +100,7 @@ void _openBiometrics(BuildContext context) {
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) =>
-          BiometricsScreen(profileId: target.id, profileName: target.name),
+      builder: (_) => BiometricsScreen(profileId: target.id, profileName: target.name),
     ),
   );
 }
@@ -116,8 +113,7 @@ void _openBiometrics(BuildContext context) {
 /// dependiente suyo). Es la misma condición que exigen las reglas de
 /// Firestore para ESCRIBIR (`request.auth.uid == profile.uid`): quien solo
 /// tiene acceso compartido puede leer, pero no cargar datos.
-bool _isMine(FamilyProfile p) =>
-    p.ownerUid == FirebaseAuth.instance.currentUser?.uid;
+bool _isMine(FamilyProfile p) => p.ownerUid == FirebaseAuth.instance.currentUser?.uid;
 
 /// Carné de vacunación del perfil activo. El carné vive en el perfil
 /// (`LiveProfileScreen`) y esto es un acceso directo a la misma pantalla.
@@ -194,14 +190,13 @@ class DiarioScreen extends StatelessWidget {
                           const _InfoNote(text: 'Cargando tu perfil…')
                         else if (!_isMine(active))
                           _InfoNote(
-                            text:
-                                'Estás viendo a ${active.name} en modo lectura. '
+                            text: 'Estás viendo a ${active.name} en modo lectura. '
                                 'Para cargar datos, elegí tu perfil o el de un dependiente tuyo.',
                           )
                         else if (active.type == ProfileType.mascota)
-                          _PetBody(profile: active)
-                        else
-                          _PersonBody(profile: active),
+                            _PetBody(profile: active)
+                          else
+                            _PersonBody(profile: active),
                       ],
                     ),
                   );
@@ -236,10 +231,7 @@ class _PersonBody extends StatelessWidget {
             _AccesoItem(
               icon: Icons.calendar_month_outlined,
               label: 'MI AGENDA',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AgendaScreen()),
-              ),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AgendaScreen())),
             ),
             _AccesoItem(
               icon: Icons.add_box_outlined,
@@ -275,14 +267,12 @@ class _PersonBody extends StatelessWidget {
             ),
             _AccesoItem(
               icon: Icons.medication_outlined,
-              label: 'TRATAMIENTOS',
-              onTap: () => _openTreatments(context),
+              label: 'NUEVO TRATAMIENTO',
+              onTap: () => _openNewTreatment(context),
             ),
           ],
         ),
         const SizedBox(height: 24),
-        const EmergenciaCard(),
-        const SizedBox(height: 12),
         const _AyudaCard(),
       ],
     );
@@ -291,9 +281,9 @@ class _PersonBody extends StatelessWidget {
 
 /// Diario de una mascota. Triaje SOAP, estado emocional, bio-métricas
 /// (sueño, pasos, estrés) y el contacto SOS humano no aplican, así que no
-/// se muestran. La ficha y el botón de compartir pasan a ser accesos
-/// directos en vez de ir en la tarjeta de ayuda; lo que se comparte es la
-/// ficha veterinaria (ver `MedicalSheetData`), sin datos de personas.
+/// se muestran. Al final lleva la misma tarjeta "¿Necesitas ayuda?" que las
+/// personas; lo que se comparte es la ficha veterinaria (ver
+/// `MedicalSheetData`), sin datos de personas.
 class _PetBody extends StatelessWidget {
   final FamilyProfile profile;
   const _PetBody({required this.profile});
@@ -326,8 +316,8 @@ class _PetBody extends StatelessWidget {
             ),
             _AccesoItem(
               icon: Icons.medication_outlined,
-              label: 'TRATAMIENTOS',
-              onTap: () => _openTreatments(context),
+              label: 'NUEVO TRATAMIENTO',
+              onTap: () => _openNewTreatment(context),
             ),
             _AccesoItem(
               icon: Icons.medical_services_outlined,
@@ -344,10 +334,7 @@ class _PetBody extends StatelessWidget {
             _AccesoItem(
               icon: Icons.calendar_month_outlined,
               label: 'AGENDA',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AgendaScreen()),
-              ),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AgendaScreen())),
             ),
             _AccesoItem(
               icon: Icons.monitor_weight_outlined,
@@ -356,23 +343,8 @@ class _PetBody extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 22),
-        _AccesosGroup(
-          title: 'Ficha veterinaria',
-          color: SaluteColors.terracotta,
-          items: [
-            _AccesoItem(
-              icon: Icons.badge_outlined,
-              label: 'FICHA',
-              onTap: () => _openMedicalSheet(context),
-            ),
-            _AccesoItem(
-              icon: Icons.share_outlined,
-              label: 'COMPARTIR FICHA',
-              onTap: () => _openMedicalSheet(context, startWithShare: true),
-            ),
-          ],
-        ),
+        const SizedBox(height: 24),
+        const _AyudaCard(isPet: true),
       ],
     );
   }
@@ -381,10 +353,7 @@ class _PetBody extends StatelessWidget {
 void _openBotiquin(BuildContext context) {
   Navigator.push(
     context,
-    MaterialPageRoute(
-      builder: (_) =>
-          BotiquinScreen(onBackToDashboard: () => Navigator.maybePop(context)),
-    ),
+    MaterialPageRoute(builder: (_) => BotiquinScreen(onBackToDashboard: () => Navigator.maybePop(context))),
   );
 }
 
@@ -421,7 +390,10 @@ class _DiarioAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppHeader.secondary(title: 'Diario', onBack: onBackToDashboard);
+    return AppHeader.secondary(
+      title: 'Diario',
+      onBack: onBackToDashboard,
+    );
   }
 }
 
@@ -430,11 +402,7 @@ class _DiarioAppBar extends StatelessWidget {
 // =============================================================================
 
 /// Card showing current triage index level
-const _triageLevelLabels = {
-  1: 'Nivel 1 (Emergencia)',
-  2: 'Nivel 2 (Urgencia)',
-  3: 'Nivel 3 (Estable)',
-};
+const _triageLevelLabels = {1: 'Nivel 1 (Emergencia)', 2: 'Nivel 2 (Urgencia)', 3: 'Nivel 3 (Estable)'};
 
 /// Último registro de triaje del perfil ACTIVO (antes recorría todos los
 /// perfiles de la familia). Si la lectura falla (ej. sin permiso), devuelve
@@ -445,10 +413,7 @@ Future<_LatestTriage?> _fetchLatestTriage(FamilyProfile profile) async {
     // con la más reciente que sea de triaje (viene ordenado desc por
     // fecha, pero el registro más nuevo del perfil puede ser de otra
     // categoría).
-    final records = await MedicalRecordService.instance.fetchRecords(
-      profile.id,
-      limit: 10,
-    );
+    final records = await MedicalRecordService.instance.fetchRecords(profile.id, limit: 10);
     for (final r in records) {
       if (r.category == RecordCategory.triaje) {
         return _LatestTriage(
@@ -468,11 +433,7 @@ class _LatestTriage {
   final String profileName;
   final int level;
   final DateTime date;
-  const _LatestTriage({
-    required this.profileName,
-    required this.level,
-    required this.date,
-  });
+  const _LatestTriage({required this.profileName, required this.level, required this.date});
 }
 
 class _TriajeCard extends StatefulWidget {
@@ -518,11 +479,11 @@ class _TriajeCardState extends State<_TriajeCard> {
       case 1:
         return const Color(0xFFB03A3A);
       case 2:
-        return SaluteColors.brownOrange;
+        return SaluteColors.warning;
       case 3:
         return SaluteColors.primaryGreen;
       default:
-        return Colors.grey.shade500;
+        return SaluteColors.textMuted;
     }
   }
 
@@ -548,10 +509,7 @@ class _TriajeCardState extends State<_TriajeCard> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.18),
-                    width: 1.2,
-                  ),
+                  border: Border.all(color: color.withValues(alpha: 0.18), width: 1.2),
                   boxShadow: [
                     BoxShadow(
                       color: color.withValues(alpha: 0.12),
@@ -567,20 +525,13 @@ class _TriajeCardState extends State<_TriajeCard> {
                       height: 54,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            color.withValues(alpha: 0.22),
-                            color.withValues(alpha: 0.08),
-                          ],
+                          colors: [color.withValues(alpha: 0.22), color.withValues(alpha: 0.08)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Icon(
-                        Icons.monitor_heart_outlined,
-                        color: color,
-                        size: 28,
-                      ),
+                      child: Icon(Icons.monitor_heart_outlined, color: color, size: 28),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -590,9 +541,9 @@ class _TriajeCardState extends State<_TriajeCard> {
                           Text(
                             'ÍNDICE DE TRIAJE ACTUAL',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 12,
                               fontWeight: FontWeight.w800,
-                              color: Colors.grey[500],
+                              color: SaluteColors.textMuted,
                               letterSpacing: 1,
                             ),
                           ),
@@ -601,9 +552,8 @@ class _TriajeCardState extends State<_TriajeCard> {
                             loading
                                 ? 'Cargando...'
                                 : (latest != null
-                                      ? (_triageLevelLabels[latest.level] ??
-                                            'Nivel ${latest.level}')
-                                      : 'Sin registros'),
+                                ? (_triageLevelLabels[latest.level] ?? 'Nivel ${latest.level}')
+                                : 'Sin registros'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -617,13 +567,13 @@ class _TriajeCardState extends State<_TriajeCard> {
                             loading
                                 ? ''
                                 : (latest != null
-                                      ? '${latest.profileName} · ${_timeAgo(latest.date)}'
-                                      : 'Tocá para cargar el primer triaje de ${widget.profile.name}'),
+                                ? '${latest.profileName} · ${_timeAgo(latest.date)}'
+                                : 'Tocá para cargar el primer triaje de ${widget.profile.name}'),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 12.5,
-                              color: Colors.grey[600],
+                              color: SaluteColors.textMuted,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -638,11 +588,7 @@ class _TriajeCardState extends State<_TriajeCard> {
                         color: color.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        Icons.chevron_right_rounded,
-                        color: color,
-                        size: 24,
-                      ),
+                      child: Icon(Icons.chevron_right_rounded, color: color, size: 24),
                     ),
                   ],
                 ),
@@ -678,16 +624,14 @@ class _HitoCard extends StatefulWidget {
 class _HitoCardState extends State<_HitoCard> {
   // Se crea una sola vez por perfil (el padre usa `ValueKey(profile.id)`),
   // para no volver a suscribirse a Firestore en cada rebuild.
-  late final Stream<AgendaEvent?> _stream = AgendaService.instance
-      .watchNextForProfile(widget.profile.id);
+  late final Stream<AgendaEvent?> _stream = AgendaService.instance.watchNextForProfile(widget.profile.id);
 
   String _formatDate(DateTime d) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final target = DateTime(d.year, d.month, d.day);
     final diff = target.difference(today).inDays;
-    final time =
-        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    final time = '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     if (diff == 0) return 'Hoy, $time';
     if (diff == 1) return 'Mañana, $time';
     return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}, $time';
@@ -700,9 +644,7 @@ class _HitoCardState extends State<_HitoCard> {
       builder: (context, snapshot) {
         // Si la lectura falla (ej. sin permiso) se muestra como "sin turnos".
         final next = snapshot.hasError ? null : snapshot.data;
-        final loading =
-            snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasError;
+        final loading = snapshot.connectionState == ConnectionState.waiting && !snapshot.hasError;
         const color = SaluteColors.brownOrange;
 
         return Semantics(
@@ -712,19 +654,13 @@ class _HitoCardState extends State<_HitoCard> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(22),
             child: InkWell(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AgendaScreen()),
-              ),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AgendaScreen())),
               borderRadius: BorderRadius.circular(22),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.18),
-                    width: 1.2,
-                  ),
+                  border: Border.all(color: color.withValues(alpha: 0.18), width: 1.2),
                   boxShadow: [
                     BoxShadow(
                       color: color.withValues(alpha: 0.10),
@@ -740,20 +676,14 @@ class _HitoCardState extends State<_HitoCard> {
                       height: 54,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            color.withValues(alpha: 0.22),
-                            color.withValues(alpha: 0.08),
-                          ],
+                          colors: [color.withValues(alpha: 0.22), color.withValues(alpha: 0.08)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Icon(
-                        next != null
-                            ? (_hitoIcons[next.type] ??
-                                  Icons.event_note_outlined)
-                            : Icons.event_note_outlined,
+                        next != null ? (_hitoIcons[next.type] ?? Icons.event_note_outlined) : Icons.event_note_outlined,
                         color: color,
                         size: 28,
                       ),
@@ -768,17 +698,15 @@ class _HitoCardState extends State<_HitoCard> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 12,
                               fontWeight: FontWeight.w800,
-                              color: Colors.grey[500],
+                              color: SaluteColors.textMuted,
                               letterSpacing: 1,
                             ),
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            loading
-                                ? 'Cargando...'
-                                : (next?.title ?? 'Sin próximos turnos'),
+                            loading ? 'Cargando...' : (next?.title ?? 'Sin próximos turnos'),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -790,10 +718,7 @@ class _HitoCardState extends State<_HitoCard> {
                           const SizedBox(height: 8),
                           if (next != null)
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
                                 color: SaluteColors.lightGreen,
                                 borderRadius: BorderRadius.circular(10),
@@ -801,11 +726,7 @@ class _HitoCardState extends State<_HitoCard> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
-                                    Icons.calendar_today_outlined,
-                                    size: 13,
-                                    color: SaluteColors.primaryGreen,
-                                  ),
+                                  const Icon(Icons.calendar_today_outlined, size: 13, color: SaluteColors.primaryGreen),
                                   const SizedBox(width: 6),
                                   Text(
                                     _formatDate(next.date),
@@ -821,11 +742,7 @@ class _HitoCardState extends State<_HitoCard> {
                           else if (!loading)
                             Text(
                               'Agregá un turno desde la agenda',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                color: Colors.grey[500],
-                                fontWeight: FontWeight.w500,
-                              ),
+                              style: TextStyle(fontSize: 12.5, color: SaluteColors.textMuted, fontWeight: FontWeight.w500),
                             ),
                         ],
                       ),
@@ -838,11 +755,7 @@ class _HitoCardState extends State<_HitoCard> {
                         color: color.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.chevron_right_rounded,
-                        color: color,
-                        size: 24,
-                      ),
+                      child: const Icon(Icons.chevron_right_rounded, color: color, size: 24),
                     ),
                   ],
                 ),
@@ -862,11 +775,7 @@ class _AccesosGroup extends StatelessWidget {
   final String title;
   final Color color;
   final List<_AccesoItem> items;
-  const _AccesosGroup({
-    required this.title,
-    required this.color,
-    required this.items,
-  });
+  const _AccesosGroup({required this.title, required this.color, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -879,10 +788,7 @@ class _AccesosGroup extends StatelessWidget {
             Container(
               width: 4,
               height: 18,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(4),
-              ),
+              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
             ),
             const SizedBox(width: 8),
             Flexible(
@@ -890,11 +796,7 @@ class _AccesosGroup extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black87,
-                ),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.black87),
               ),
             ),
           ],
@@ -907,12 +809,7 @@ class _AccesosGroup extends StatelessWidget {
               spacing: spacing,
               runSpacing: spacing,
               children: items
-                  .map(
-                    (item) => SizedBox(
-                      width: tileWidth,
-                      child: _AccesoButton(item: item, color: color),
-                    ),
-                  )
+                  .map((item) => SizedBox(width: tileWidth, child: _AccesoButton(item: item, color: color)))
                   .toList(),
             );
           },
@@ -927,11 +824,7 @@ class _AccesoItem {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  const _AccesoItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _AccesoItem({required this.icon, required this.label, required this.onTap});
 }
 
 /// Tarjeta de un acceso directo.
@@ -983,7 +876,7 @@ class _AccesoButton extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 12,
                     height: 1.2,
                     fontWeight: FontWeight.w800,
                     color: Colors.grey[800],
@@ -999,13 +892,16 @@ class _AccesoButton extends StatelessWidget {
   }
 }
 
-// La card de "Protocolo de Emergencia" (EmergenciaCard) ahora vive en
-// core/contacts.dart, conectada a Firestore vía SosContactService, para
-// poder reutilizarla y que el contacto SOS persista de verdad.
+// El "Protocolo de Emergencia" (contacto SOS) vive en el Perfil de cada persona
+// (ver `FamiliarProfileScreen`), con el estilo del resto de esa pantalla.
 
-/// Card with help options (Medical record & data sharing)
+/// Tarjeta de ayuda, igual para personas y mascotas: un único botón que abre
+/// la ficha lista para compartir. La hoja de compartir ya deja revisar la
+/// vista previa, copiar el texto o guardarlo como PDF, así que no hace falta
+/// un segundo botón solo para "ver la ficha" (sigue en el Perfil).
 class _AyudaCard extends StatelessWidget {
-  const _AyudaCard();
+  final bool isPet;
+  const _AyudaCard({this.isPet = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1015,9 +911,7 @@ class _AyudaCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: SaluteColors.cardBeige,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: SaluteColors.cardBeige.withValues(alpha: 0.5),
-        ),
+        border: Border.all(color: SaluteColors.cardBeige.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -1037,25 +931,18 @@ class _AyudaCard extends StatelessWidget {
               color: SaluteColors.primaryGreen,
             ),
           ),
+          const SizedBox(height: 6),
+          Text(
+            isPet
+                ? 'Compartí la ficha veterinaria con quien la necesite, eligiendo qué datos incluir.'
+                : 'Compartí tu ficha médica con quien la necesite, eligiendo qué datos incluir.',
+            style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.35),
+          ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _AccesoSimpleButton(
-                  icon: Icons.badge_outlined,
-                  label: 'FICHA MÉDICA',
-                  onTap: () => _openMedicalSheet(context),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _AccesoSimpleButton(
-                  icon: Icons.share_outlined,
-                  label: 'COMPARTIR DATOS',
-                  onTap: () => _openMedicalSheet(context, startWithShare: true),
-                ),
-              ),
-            ],
+          _AccesoSimpleButton(
+            icon: Icons.share_outlined,
+            label: 'COMPARTIR DATOS',
+            onTap: () => _openMedicalSheet(context, startWithShare: true),
           ),
         ],
       ),
@@ -1063,44 +950,51 @@ class _AyudaCard extends StatelessWidget {
   }
 }
 
-/// Simple button for help options
+/// Botón de ancho completo de la tarjeta de ayuda.
 class _AccesoSimpleButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
-  const _AccesoSimpleButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _AccesoSimpleButton({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: SaluteColors.cardBeige,
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: SaluteColors.primaryGreen.withValues(alpha: 0.15),
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: SaluteColors.primaryGreen),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: SaluteColors.primaryGreen,
-              ),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 52),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: SaluteColors.primaryGreen.withValues(alpha: 0.2)),
             ),
-          ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: SaluteColors.primaryGreen, size: 20),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: SaluteColors.primaryGreen,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

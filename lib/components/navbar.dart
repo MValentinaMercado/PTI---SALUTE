@@ -1,3 +1,4 @@
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:flutter/material.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/components/design_system.dart';
@@ -104,8 +105,9 @@ class _NavItem extends StatelessWidget {
     final bool active = selectedIndex == index;
 
     return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      child: A11yTap(
+        label: label.substring(0, 1) + label.substring(1).toLowerCase(),
+        selected: active,
         onTap: () => onTap(index),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -133,7 +135,7 @@ class _NavItem extends StatelessWidget {
               child: Icon(
                 active ? activeIcon : icon,
                 size: 22,
-                color: active ? Colors.white : Color(0xFF9E9E9E),
+                color: active ? Colors.white : SaluteColors.textMuted,
               ),
             ),
             const SizedBox(height: 5),
@@ -145,7 +147,7 @@ class _NavItem extends StatelessWidget {
                  letterSpacing: 0.4,
                  color: active
                      ? SaluteColors.primaryGreen
-                     : Color(0xFF9E9E9E),
+                     : SaluteColors.textMuted,
                ),
              ),
           ],
@@ -166,8 +168,9 @@ class _MapButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      child: A11yTap(
+        label: 'Mapa de servicios de salud',
+        selected: isActive,
         onTap: onTap,
         child: Center(
           child: AnimatedContainer(

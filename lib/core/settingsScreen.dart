@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:saluteapp/components/design_system.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:saluteapp/components/app_header.dart';
 import 'package:saluteapp/components/insurance_picker.dart';
 import 'package:saluteapp/core/colors.dart';
@@ -10,8 +10,12 @@ import 'package:saluteapp/core/biometric_service.dart';
 import 'package:saluteapp/core/secure_credentials_service.dart';
 import 'package:saluteapp/core/models/family_profile.dart';
 import 'package:saluteapp/core/privacy_security_screen.dart';
+import 'package:saluteapp/core/services/app_settings_service.dart';
+import 'package:saluteapp/core/services/local_alarm_service.dart';
 import 'package:saluteapp/core/sharing_settings_screen.dart';
 import 'package:saluteapp/legal/terms_screen.dart';
+import 'package:saluteapp/onboarding/onboarding_tour_screen.dart';
+import 'package:saluteapp/profile/accessibility_screen.dart';
 import 'package:saluteapp/core/services/profile_service.dart';
 import 'package:saluteapp/profile/profile_form_screen.dart';
 
@@ -24,10 +28,14 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
-  bool _locationServicesEnabled = true;
+class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObserver {
+  // Notificaciones y ubicación viven en AppSettingsService (persistidas y
+  // respetadas por el resto de la app), no en variables locales.
+  final _settings = AppSettingsService.instance;
+
+  /// Estado REAL del permiso del sistema (distinto de la preferencia de la app).
+  bool _systemLocationGranted = true;
+  bool _systemNotificationsAllowed = true;
 
   static const String _diarioLockFeature = 'diario_lock';
 
@@ -54,6 +62,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _settings.addListener(_onSettingsChanged);
+    _refreshSystemPermissions();
     _loadDiarioLockState();
     _loadQuickLoginState();
     _listenSelfProfile();
@@ -61,14 +72,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _settings.removeListener(_onSettingsChanged);
     _selfSub?.cancel();
     super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  // Al volver de los ajustes del teléfono se relee el permiso real.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshSystemPermissions();
+  }
+
+  Future<void> _refreshSystemPermissions() async {
+    bool loc = true;
+    try {
+      final p = await Geolocator.checkPermission();
+      loc = p == LocationPermission.whileInUse || p == LocationPermission.always;
+    } catch (_) {}
+    final notif = await LocalAlarmService.instance.notificationsAllowed();
+    if (!mounted) return;
+    setState(() {
+      _systemLocationGranted = loc;
+      _systemNotificationsAllowed = notif;
+    });
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    await _settings.setNotificationsEnabled(value);
+    if (value) {
+      // La app lo permite: si el sistema las bloqueó, se pide / se explica.
+      var allowed = await LocalAlarmService.instance.requestNotificationsPermission();
+      if (!mounted) return;
+      setState(() => _systemNotificationsAllowed = allowed);
+      if (!allowed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Las notificaciones están bloqueadas en los ajustes del teléfono.'),
+            action: SnackBarAction(label: 'Abrir ajustes', onPressed: Geolocator.openAppSettings),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleLocation(bool value) async {
+    await _settings.setLocationEnabled(value);
+    if (!value) return;
+    try {
+      var p = await Geolocator.checkPermission();
+      if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
+      final granted = p == LocationPermission.whileInUse || p == LocationPermission.always;
+      if (!mounted) return;
+      setState(() => _systemLocationGranted = granted);
+    } catch (_) {}
   }
 
   void _listenSelfProfile() {
     try {
       _selfSub = ProfileService.instance.watchSelfProfile().listen(
-        (profile) {
+            (profile) {
           if (!mounted) return;
           setState(() {
             _selfProfile = profile;
@@ -109,20 +176,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await ProfileService.instance.setInsurance(self.id, picked);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            picked.isEmpty
-                ? 'Obra social quitada.'
-                : 'Obra social guardada: $picked',
-          ),
-        ),
+        SnackBar(content: Text(picked.isEmpty ? 'Obra social quitada.' : 'Obra social guardada: $picked')),
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se pudo guardar la obra social. Intentá de nuevo.'),
-        ),
+        const SnackBar(content: Text('No se pudo guardar la obra social. Intentá de nuevo.')),
       );
     }
   }
@@ -154,11 +213,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!ok) return;
     }
 
-    await BiometricService.instance.setEnabledFor(
-      _diarioLockFeature,
-      uid,
-      value,
-    );
+    await BiometricService.instance.setEnabledFor(_diarioLockFeature, uid, value);
     if (!mounted) return;
     setState(() => _diarioLockEnabled = value);
   }
@@ -210,9 +265,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     } on AuthFailure catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
       return;
     } catch (_) {
       if (!mounted) return;
@@ -227,16 +280,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (!ok) return;
 
-    await SecureCredentialsService.instance.save(
-      uid: uid,
-      email: email,
-      password: password,
-    );
+    await SecureCredentialsService.instance.save(uid: uid, email: email, password: password);
     if (!mounted) return;
     setState(() => _quickLoginEnabled = true);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Login rápido activado.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Login rápido activado.')),
+    );
   }
 
   Future<String?> _askPassword(String email, {bool creating = false}) {
@@ -246,9 +295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(
-            creating ? 'Creá una contraseña' : 'Confirmá tu contraseña',
-          ),
+          title: Text(creating ? 'Creá una contraseña' : 'Confirmá tu contraseña'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,8 +303,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 creating
                     ? 'Tu cuenta entró con Google y todavía no tiene contraseña propia. '
-                          'Creá una para $email: la vas a poder usar también para entrar '
-                          'sin Google, y para el login rápido con huella.'
+                    'Creá una para $email: la vas a poder usar también para entrar '
+                    'sin Google, y para el login rápido con huella.'
                     : 'Para activar el login rápido con huella, ingresá la contraseña de $email.',
                 style: TextStyle(fontSize: 13, color: Colors.grey[700]),
               ),
@@ -269,11 +316,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 decoration: InputDecoration(
                   hintText: 'Contraseña',
                   suffixIcon: IconButton(
-                    icon: Icon(
-                      obscure
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                    ),
+                    tooltip: 'Mostrar u ocultar contraseña',
+                    icon: Icon(obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
                     onPressed: () => setDialogState(() => obscure = !obscure),
                   ),
                 ),
@@ -320,10 +364,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _openMyProfile() async {
     final profiles = await ProfileService.instance.watchProfiles().first;
     // `isSelf` solo no alcanza: hay uno por integrante de la familia.
-    final self = ProfileService.selfOf(
-      profiles,
-      AuthService.instance.currentUser?.uid,
-    );
+    final self = ProfileService.selfOf(profiles, AuthService.instance.currentUser?.uid);
     if (!mounted) return;
     if (self == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -332,9 +373,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ProfileFormScreen(existingProfile: self),
-      ),
+      MaterialPageRoute(builder: (_) => ProfileFormScreen(existingProfile: self)),
     );
   }
 
@@ -351,40 +390,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const DsSectionTitle(title: 'Preferencias'),
+                    _buildSectionTitle('Preferencias'),
                     const SizedBox(height: 16),
                     _buildToggleSetting(
                       title: 'Notificaciones',
                       subtitle: 'Recibe alertas de salud',
-                      value: _notificationsEnabled,
-                      onChanged: (value) =>
-                          setState(() => _notificationsEnabled = value),
+                      value: _settings.notificationsEnabled,
+                      onChanged: _toggleNotifications,
                     ),
-                    const SizedBox(height: 12),
-                    _buildToggleSetting(
-                      title: 'Modo Oscuro',
-                      subtitle: 'Cambiar tema visual',
-                      value: _darkModeEnabled,
-                      onChanged: (value) =>
-                          setState(() => _darkModeEnabled = value),
-                    ),
+                    if (_settings.notificationsEnabled && !_systemNotificationsAllowed) ...[
+                      const SizedBox(height: 8),
+                      _buildSettingTile(
+                        icon: Icons.notifications_off_outlined,
+                        title: 'Bloqueadas en el teléfono',
+                        subtitle: 'Tocá para permitirlas en los ajustes',
+                        onTap: Geolocator.openAppSettings,
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     _buildToggleSetting(
                       title: 'Servicios de Ubicación',
                       subtitle: 'Permitir acceso a ubicación',
-                      value: _locationServicesEnabled,
-                      onChanged: (value) =>
-                          setState(() => _locationServicesEnabled = value),
+                      value: _settings.locationEnabled,
+                      onChanged: _toggleLocation,
+                    ),
+                    if (_settings.locationEnabled && !_systemLocationGranted) ...[
+                      const SizedBox(height: 8),
+                      _buildSettingTile(
+                        icon: Icons.location_off_outlined,
+                        title: 'Permiso denegado en el teléfono',
+                        subtitle: 'Tocá para permitirlo en los ajustes',
+                        onTap: Geolocator.openAppSettings,
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    _buildToggleSetting(
+                      title: 'SOS fijo en el Inicio',
+                      subtitle: 'El botón SOS queda solo en el Inicio y no aparece en las demás pantallas',
+                      value: _settings.sosPinnedToDashboard,
+                      onChanged: _settings.setSosPinnedToDashboard,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSettingTile(
+                      icon: Icons.accessibility_new_outlined,
+                      title: 'Accesibilidad',
+                      subtitle: 'Tamaño de texto, contraste y voz',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AccessibilityScreen()),
+                      ),
                     ),
                     const SizedBox(height: 32),
-                    const DsSectionTitle(title: 'Cuenta'),
+                    _buildSectionTitle('Cuenta'),
                     const SizedBox(height: 16),
                     if (!_diarioLockLoading && _diarioLockSupported) ...[
                       _buildToggleSetting(
@@ -423,31 +483,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: 'Compartir perfiles',
                       subtitle: 'Elegí quién de tu familia ve cada perfil',
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const SharingSettingsScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const SharingSettingsScreen()),
                       ),
                     ),
                     const SizedBox(height: 12),
                     _buildSettingTile(
                       icon: Icons.security_outlined,
                       title: 'Privacidad y Seguridad',
-                      subtitle:
-                          'Contraseña, cuentas vinculadas y eliminar cuenta',
+                      subtitle: 'Contraseña, cuentas vinculadas y eliminar cuenta',
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const PrivacySecurityScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const PrivacySecurityScreen()),
                       ),
                     ),
                     const SizedBox(height: 32),
-                    const DsSectionTitle(title: 'Información'),
+                    _buildSectionTitle('Información'),
                     const SizedBox(height: 16),
+                    _buildSettingTile(
+                      icon: Icons.explore_outlined,
+                      title: 'Recorrido de bienvenida',
+                      subtitle: 'Volver a ver la guía rápida de la app',
+                      onTap: () => OnboardingTourScreen.open(context),
+                    ),
+                    const SizedBox(height: 12),
                     _buildSettingTile(
                       icon: Icons.info_outline,
                       title: 'Acerca de',
                       subtitle: 'Versión 1.0.0',
-                      onTap: () {},
+                      onTap: () => showAboutDialog(
+                        context: context,
+                        applicationName: 'Salute',
+                        applicationVersion: '1.0.0',
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _buildSettingTile(
@@ -459,28 +525,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton.icon(
+                    ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 54), child: ElevatedButton.icon(
                         onPressed: _signingOut ? null : _signOut,
                         icon: _signingOut
                             ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.2,
-                                  valueColor: AlwaysStoppedAnimation(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                          ),
+                        )
                             : const Icon(Icons.logout),
-                        label: Text(
-                          _signingOut ? 'Cerrando sesión...' : 'Cerrar Sesión',
-                        ),
+                        label: Text(_signingOut ? 'Cerrando sesión...' : 'Cerrar Sesión'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE74C3C),
+                          backgroundColor: SaluteColors.danger,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -499,13 +558,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+        color: SaluteColors.primaryGreen,
+      ),
+    );
+  }
+
   Widget _buildToggleSetting({
     required String title,
     required String subtitle,
     required bool value,
     required Function(bool) onChanged,
   }) {
-    return Container(
+    return MergeSemantics(child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -536,7 +606,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: SaluteColors.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -548,7 +621,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildSettingTile({
@@ -599,13 +672,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: SaluteColors.textMuted,
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.chevron_right, color: Colors.grey[400], size: 24),
+            Icon(Icons.chevron_right, color: SaluteColors.textMuted, size: 24),
           ],
         ),
       ),

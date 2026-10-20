@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:saluteapp/components/insurance_picker.dart';
+import 'package:saluteapp/components/voice_buttons.dart';
 import 'package:saluteapp/components/profile_avatar.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/family_profile.dart';
@@ -158,7 +159,7 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+            child: const Text('Eliminar', style: TextStyle(color: SaluteColors.danger)),
           ),
         ],
       ),
@@ -194,7 +195,8 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
           // que representa al dueño de la cuenta (ver BUG-001).
           if (_isEditing && widget.existingProfile?.isSelf != true)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              tooltip: 'Eliminar',
+              icon: const Icon(Icons.delete_outline, color: SaluteColors.danger),
               onPressed: _saving ? null : _delete,
             ),
         ],
@@ -243,7 +245,7 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'Con perro o gato el carné de vacunas ya trae un esquema orientativo.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
                 ),
                 const SizedBox(height: 20),
                 const _FieldLabel('RAZA'),
@@ -267,7 +269,7 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
               ],
               const _FieldLabel('ALERGIAS'),
               const SizedBox(height: 10),
-              _textField(_allergiesController, hint: 'Ej: Penicilina'),
+              _textField(_allergiesController, hint: 'Ej: Penicilina, mariscos, polen', dictation: true),
               const SizedBox(height: 32),
               _buildSaveButton(),
               const SizedBox(height: 24),
@@ -353,7 +355,7 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
         ),
         child: Column(
           children: [
-            Icon(icon, color: selected ? Colors.white : Colors.grey[600], size: 22),
+            Icon(icon, color: selected ? Colors.white : SaluteColors.textMuted, size: 22),
             const SizedBox(height: 4),
             Text(
               label,
@@ -382,15 +384,17 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today_outlined, size: 18, color: Colors.grey[500]),
+            Icon(Icons.calendar_today_outlined, size: 18, color: SaluteColors.textMuted),
             const SizedBox(width: 10),
-            Text(
-              _birthDate != null
-                  ? '${_birthDate!.day}/${_birthDate!.month}/${_birthDate!.year}'
-                  : 'Seleccionar fecha',
-              style: TextStyle(
-                color: _birthDate != null ? Colors.black87 : Colors.grey[400],
-                fontSize: 15,
+            Flexible(
+              child: Text(
+                _birthDate != null
+                    ? '${_birthDate!.day}/${_birthDate!.month}/${_birthDate!.year}'
+                    : 'Seleccionar fecha',
+                style: TextStyle(
+                  color: _birthDate != null ? Colors.black87 : SaluteColors.textMuted,
+                  fontSize: 15,
+                ),
               ),
             ),
           ],
@@ -412,32 +416,47 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.local_hospital_outlined, size: 18, color: Colors.grey[500]),
+            Icon(Icons.local_hospital_outlined, size: 18, color: SaluteColors.textMuted),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 _insurance.isNotEmpty ? _insurance : 'Seleccionar obra social',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: _insurance.isNotEmpty ? Colors.black87 : Colors.grey[400],
+                  color: _insurance.isNotEmpty ? Colors.black87 : SaluteColors.textMuted,
                   fontSize: 15,
                 ),
               ),
             ),
-            Icon(Icons.arrow_drop_down, color: Colors.grey[500]),
+            Icon(Icons.arrow_drop_down, color: SaluteColors.textMuted),
           ],
         ),
       ),
     );
   }
 
-  Widget _textField(TextEditingController controller, {required String hint}) {
+  /// [dictation] agrega el micrófono y deja crecer el campo; se usa solo
+  /// donde el texto es libre y puede ser largo (no en nombres, raza, etc.,
+  /// que el reconocimiento de voz suele escribir mal).
+  Widget _textField(TextEditingController controller, {required String hint, bool dictation = false}) {
     return TextField(
       controller: controller,
+      minLines: 1,
+      maxLines: dictation ? 4 : 1,
+      keyboardType: dictation ? TextInputType.multiline : null,
+      textCapitalization: dictation ? TextCapitalization.sentences : TextCapitalization.none,
       style: const TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
+        suffixIcon: dictation
+            ? Align(
+                alignment: Alignment.topRight,
+                widthFactor: 1,
+                heightFactor: 1,
+                child: DictationButton(controller: controller),
+              )
+            : null,
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+        hintStyle: TextStyle(color: SaluteColors.textMuted, fontSize: 15),
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -455,10 +474,7 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
   }
 
   Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: FilledButton(
+    return ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 56), child: FilledButton(
         onPressed: _saving ? null : _save,
         style: FilledButton.styleFrom(
           backgroundColor: SaluteColors.primaryGreen,
@@ -488,7 +504,7 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
         color: SaluteColors.primaryGreen,
         letterSpacing: 1,

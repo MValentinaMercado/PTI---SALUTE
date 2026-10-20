@@ -131,7 +131,7 @@ class _InsurancePickerSheetState extends State<_InsurancePickerSheet> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(
                 'Elegí una de la lista o agregá la tuya.',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 13, color: SaluteColors.textMuted),
               ),
             ),
             if (_loadingCustom) const LinearProgressIndicator(minHeight: 2),
@@ -155,10 +155,7 @@ class _InsurancePickerSheetState extends State<_InsurancePickerSheet> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: OutlinedButton.icon(
+              child: ConstrainedBox(constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 50), child: OutlinedButton.icon(
                   onPressed: _addCustom,
                   icon: const Icon(Icons.add, color: SaluteColors.primaryGreen),
                   label: const Text(

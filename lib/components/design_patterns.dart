@@ -1,3 +1,4 @@
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:flutter/material.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'design_system.dart';
@@ -14,20 +15,13 @@ class DsScreenLayout extends StatelessWidget {
   final bool scrollable;
 
   const DsScreenLayout({
-    super.key,
+    Key? key,
     required this.header,
     required this.children,
     this.padding,
     this.backgroundColor,
     this.scrollable = true,
-  });
-
-  static const EdgeInsets _defaultPadding = EdgeInsets.fromLTRB(
-    DsSpacing.lg,
-    DsSpacing.lg,
-    DsSpacing.lg,
-    DsSpacing.xxxl,
-  );
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -36,16 +30,6 @@ class DsScreenLayout extends StatelessWidget {
       children: children,
     );
 
-    final body = scrollable
-        ? SingleChildScrollView(
-            padding: padding ?? _defaultPadding,
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            child: content,
-          )
-        : Padding(padding: padding ?? _defaultPadding, child: content);
-
     return Scaffold(
       backgroundColor: backgroundColor ?? SaluteColors.bgColor,
       body: SafeArea(
@@ -53,16 +37,27 @@ class DsScreenLayout extends StatelessWidget {
           children: [
             header,
             Expanded(
-              // Centra y limita el ancho en tablets / web.
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: DsSizes.maxContentWidth,
-                  ),
-                  child: body,
-                ),
-              ),
+              child: scrollable
+                  ? SingleChildScrollView(
+                      padding: padding ??
+                          const EdgeInsets.fromLTRB(
+                            DsSpacing.lg,
+                            DsSpacing.lg,
+                            DsSpacing.lg,
+                            DsSpacing.xl,
+                          ),
+                      child: content,
+                    )
+                  : Padding(
+                      padding: padding ??
+                          const EdgeInsets.fromLTRB(
+                            DsSpacing.lg,
+                            DsSpacing.lg,
+                            DsSpacing.lg,
+                            DsSpacing.xl,
+                          ),
+                      child: content,
+                    ),
             ),
           ],
         ),
@@ -82,12 +77,12 @@ class DsSectionHeader extends StatelessWidget {
   final bool showDivider;
 
   const DsSectionHeader({
-    super.key,
+    Key? key,
     required this.title,
     this.trailing,
     this.onTrailingTap,
     this.showDivider = false,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -97,55 +92,44 @@ class DsSectionHeader extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Semantics(
-                header: true,
-                child: Text(
-                  title,
-                  style: DsTextStyles.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              child: Text(
+                title,
+                style: DsTextStyles.heading3,
               ),
             ),
-            if (trailing != null)
-              InkWell(
+            if (trailing != null) ...[
+              const SizedBox(width: DsSpacing.sm),
+              A11yTap(
                 onTap: onTrailingTap,
-                borderRadius: BorderRadius.circular(DsBorderRadius.sm),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minHeight: DsSizes.tapTarget,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: DsSpacing.sm,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          trailing!,
-                          style: TextStyle(
-                            fontSize: DsFontSize.base,
-                            fontWeight: DsFontWeight.w700,
-                            color: SaluteColors.primaryGreen,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        const SizedBox(width: DsSpacing.xs),
-                        Icon(
-                          Icons.arrow_forward,
-                          size: DsSizes.iconSm,
+                label: trailing!,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        trailing!,
+                        style: TextStyle(
+                          fontSize: DsFontSize.xs,
+                          fontWeight: DsFontWeight.w700,
                           color: SaluteColors.primaryGreen,
+                          letterSpacing: 0.5,
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: DsSpacing.sm),
+                    Icon(
+                      Icons.arrow_forward,
+                      size: 14,
+                      color: SaluteColors.primaryGreen,
+                    ),
+                  ],
                 ),
               ),
+            ],
           ],
         ),
         if (showDivider) ...[
-          const SizedBox(height: DsSpacing.sm),
+          const SizedBox(height: DsSpacing.lg),
           const DsDivider(),
         ],
       ],
@@ -167,7 +151,7 @@ class DsMetricCard extends StatelessWidget {
   final Widget? trailing;
 
   const DsMetricCard({
-    super.key,
+    Key? key,
     required this.icon,
     required this.label,
     required this.value,
@@ -175,65 +159,57 @@ class DsMetricCard extends StatelessWidget {
     this.iconColor,
     this.backgroundColor,
     this.trailing,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      container: true,
-      label: '$label: $value${unit != null ? ' $unit' : ''}',
-      child: ExcludeSemantics(
-        child: DsCard(
-          child: Row(
-            children: [
-              DsIconContainer(
-                icon: icon,
-                iconColor: iconColor ?? SaluteColors.primaryGreen,
-                backgroundColor:
-                    backgroundColor ??
-                    SaluteColors.lightGreen.withValues(alpha: 0.3),
-                size: 48,
-              ),
-              const SizedBox(width: DsSpacing.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label.toUpperCase(),
-                      style: DsTextStyles.labelSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: DsSpacing.xs),
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(text: value, style: DsTextStyles.display),
-                          if (unit != null)
-                            TextSpan(
-                              text: ' $unit',
-                              style: const TextStyle(
-                                fontSize: DsFontSize.lg,
-                                fontWeight: DsFontWeight.w600,
-                                color: DsColors.textSecondary,
-                              ),
-                            ),
-                        ],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              if (trailing != null) ...[
-                const SizedBox(width: DsSpacing.lg),
-                trailing!,
-              ],
-            ],
+    return DsCard(
+      child: Row(
+        children: [
+          DsIconContainer(
+            icon: icon,
+            iconColor: iconColor ?? SaluteColors.primaryGreen,
+            backgroundColor:
+                backgroundColor ?? SaluteColors.lightGreen.withValues(alpha: 0.3),
           ),
-        ),
+          const SizedBox(width: DsSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: DsTextStyles.labelSmall),
+                const SizedBox(height: DsSpacing.sm),
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: value,
+                        style: const TextStyle(
+                          fontSize: DsFontSize.display,
+                          fontWeight: DsFontWeight.w900,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      if (unit != null)
+                        TextSpan(
+                          text: ' $unit',
+                          style: TextStyle(
+                            fontSize: DsFontSize.md,
+                            fontWeight: DsFontWeight.w500,
+                            color: SaluteColors.textMuted,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: DsSpacing.lg),
+            trailing!,
+          ],
+        ],
       ),
     );
   }
@@ -252,14 +228,14 @@ class DsInfoRow extends StatelessWidget {
   final Color? iconColor;
 
   const DsInfoRow({
-    super.key,
+    Key? key,
     required this.label,
     required this.value,
     this.labelColor,
     this.valueColor,
     this.icon,
     this.iconColor,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -268,29 +244,36 @@ class DsInfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (icon != null) ...[
-            Icon(
-              icon,
-              color: iconColor ?? SaluteColors.primaryGreen,
-              size: DsSizes.iconMd,
-            ),
-            const SizedBox(width: DsSpacing.md),
-          ],
           Expanded(
-            child: Text(
-              label,
-              style: DsTextStyles.bodyMedium.copyWith(
-                color: labelColor ?? DsColors.textSecondary,
-              ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (icon != null) ...[
+                  Icon(
+                    icon,
+                    color: iconColor ?? SaluteColors.primaryGreen,
+                    size: 18,
+                  ),
+                  const SizedBox(width: DsSpacing.md),
+                ],
+                Expanded(
+                  child: Text(
+                    label,
+                    style: DsTextStyles.bodyMedium.copyWith(
+                      color: labelColor,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: DsSpacing.lg),
+          const SizedBox(width: DsSpacing.md),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.end,
               style: DsTextStyles.bodyMedium.copyWith(
-                color: valueColor ?? DsColors.textPrimary,
+                color: valueColor ?? Colors.black87,
                 fontWeight: DsFontWeight.w700,
               ),
             ),
@@ -314,58 +297,51 @@ class DsEmptyState extends StatelessWidget {
   final Color? iconColor;
 
   const DsEmptyState({
-    super.key,
+    Key? key,
     required this.icon,
     required this.title,
     required this.description,
     this.actionLabel,
     this.onAction,
     this.iconColor,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? SaluteColors.primaryGreen;
-
     return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(DsSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 112,
-              height: 112,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 64,
+            color: iconColor ?? SaluteColors.primaryGreen.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: DsSpacing.xl),
+          Text(
+            title,
+            style: DsTextStyles.heading3,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: DsSpacing.md),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: DsSpacing.xl),
+            child: Text(
+              description,
+              style: DsTextStyles.bodyMedium.copyWith(
+                color: SaluteColors.textMuted,
               ),
-              child: Icon(icon, size: 52, color: color.withValues(alpha: 0.8)),
-            ),
-            const SizedBox(height: DsSpacing.xxl),
-            Text(
-              title,
-              style: DsTextStyles.heading3,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: DsSpacing.md),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: DsSpacing.lg),
-              child: Text(
-                description,
-                style: DsTextStyles.bodyMedium.copyWith(
-                  color: DsColors.textSecondary,
-                  height: DsLineHeight.relaxed,
-                ),
-                textAlign: TextAlign.center,
-              ),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: DsSpacing.xl),
+            DsButtonPrimary(
+              label: actionLabel!,
+              onPressed: onAction!,
             ),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: DsSpacing.xxl),
-              DsButtonPrimary(label: actionLabel!, onPressed: onAction),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -384,22 +360,21 @@ class DsListTile extends StatelessWidget {
   final Color? tileColor;
 
   const DsListTile({
-    super.key,
+    Key? key,
     this.leadingIcon,
     required this.title,
     this.subtitle,
     this.trailing,
     this.onTap,
     this.tileColor,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return DsCard(
-      backgroundColor: tileColor,
+    return GestureDetector(
       onTap: onTap,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 44),
+      child: DsCard(
+        backgroundColor: tileColor ?? Colors.white,
         child: Row(
           children: [
             if (leadingIcon != null) ...[
@@ -415,21 +390,14 @@ class DsListTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: DsTextStyles.bodyLarge,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(title, style: DsTextStyles.bodyLarge),
                   if (subtitle != null) ...[
-                    const SizedBox(height: DsSpacing.xs),
+                    const SizedBox(height: DsSpacing.sm),
                     Text(
                       subtitle!,
                       style: DsTextStyles.bodySmall.copyWith(
-                        color: DsColors.textSecondary,
+                        color: SaluteColors.textMuted,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ],
@@ -438,11 +406,11 @@ class DsListTile extends StatelessWidget {
             if (trailing != null) ...[
               const SizedBox(width: DsSpacing.lg),
               trailing!,
-            ] else if (onTap != null)
-              const Icon(
-                Icons.chevron_right_rounded,
-                size: DsSizes.iconLg,
-                color: DsColors.textTertiary,
+            ] else
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: SaluteColors.textMuted,
               ),
           ],
         ),
@@ -455,7 +423,13 @@ class DsListTile extends StatelessWidget {
 // STATUS BADGE PATTERN
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum DsStatusType { success, warning, error, info, neutral }
+enum DsStatusType {
+  success,
+  warning,
+  error,
+  info,
+  neutral,
+}
 
 extension DsStatusTypeExtension on DsStatusType {
   Color get backgroundColor {
@@ -465,11 +439,11 @@ extension DsStatusTypeExtension on DsStatusType {
       case DsStatusType.warning:
         return SaluteColors.lightBrown.withValues(alpha: 0.2);
       case DsStatusType.error:
-        return SaluteColors.alert.withValues(alpha: 0.1);
+        return const Color(0xFFFFEBEE);
       case DsStatusType.info:
         return SaluteColors.lightGreen.withValues(alpha: 0.1);
       case DsStatusType.neutral:
-        return Colors.grey.withValues(alpha: 0.12);
+        return Colors.grey.withValues(alpha: 0.1);
     }
   }
 
@@ -480,11 +454,11 @@ extension DsStatusTypeExtension on DsStatusType {
       case DsStatusType.warning:
         return SaluteColors.brownOrange;
       case DsStatusType.error:
-        return SaluteColors.alert;
+        return const Color(0xFFC62828);
       case DsStatusType.info:
         return SaluteColors.primaryGreen;
       case DsStatusType.neutral:
-        return DsColors.textSecondary;
+        return Colors.grey.shade700;
     }
   }
 
@@ -493,7 +467,7 @@ extension DsStatusTypeExtension on DsStatusType {
       case DsStatusType.success:
         return Icons.check_circle_outline;
       case DsStatusType.warning:
-        return Icons.warning_amber_rounded;
+        return Icons.warning_outlined;
       case DsStatusType.error:
         return Icons.error_outline;
       case DsStatusType.info:
@@ -510,40 +484,36 @@ class DsStatusBadge extends StatelessWidget {
   final bool showIcon;
 
   const DsStatusBadge({
-    super.key,
+    Key? key,
     required this.type,
     required this.label,
     this.showIcon = true,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: DsSpacing.md,
-        vertical: DsSpacing.sm,
+        horizontal: DsSpacing.lg,
+        vertical: DsSpacing.md,
       ),
       decoration: BoxDecoration(
         color: type.backgroundColor,
-        borderRadius: BorderRadius.circular(DsBorderRadius.circle),
+        borderRadius: BorderRadius.circular(DsBorderRadius.lg),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showIcon) ...[
-            Icon(type.icon, color: type.textColor, size: DsSizes.iconSm),
-            const SizedBox(width: DsSpacing.xs + 2),
+            Icon(type.icon, color: type.textColor, size: 16),
+            const SizedBox(width: DsSpacing.sm),
           ],
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: DsFontSize.base,
-                fontWeight: DsFontWeight.w700,
-                color: type.textColor,
-              ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: DsFontSize.sm,
+              fontWeight: DsFontWeight.w600,
+              color: type.textColor,
             ),
           ),
         ],
@@ -562,30 +532,26 @@ class DsHeroSection extends StatelessWidget {
   final String? subtitle;
   final Widget? trailing;
   final List<Widget>? actions;
-
-  /// Altura mínima. Crece si el contenido (o el tamaño de fuente del sistema)
-  /// lo necesita, en lugar de desbordar.
   final double height;
 
   const DsHeroSection({
-    super.key,
+    Key? key,
     required this.backgroundColor,
     required this.mainTitle,
     this.subtitle,
     this.trailing,
     this.actions,
     this.height = 240,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      constraints: BoxConstraints(minHeight: height),
+      height: height,
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(DsBorderRadius.full),
-        boxShadow: DsShadow.md,
       ),
       clipBehavior: Clip.hardEdge,
       child: Stack(
@@ -594,37 +560,40 @@ class DsHeroSection extends StatelessWidget {
             Positioned(
               right: -20,
               top: -10,
-              child: ExcludeSemantics(child: trailing!),
+              child: trailing!,
             ),
           Padding(
-            padding: const EdgeInsets.all(DsSpacing.xxl),
+            padding: const EdgeInsets.all(DsSpacing.xl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   mainTitle,
-                  style: DsTextStyles.display.copyWith(color: DsColors.onBrand),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: DsFontSize.display,
+                    fontWeight: DsFontWeight.w900,
+                    height: DsLineHeight.tight,
+                  ),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: DsSpacing.md),
+                  const SizedBox(height: DsSpacing.lg),
                   Text(
                     subtitle!,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      fontSize: DsFontSize.xl,
+                      color: Colors.white.withValues(alpha: 0.65),
+                      fontSize: DsFontSize.lg,
                       height: DsLineHeight.normal,
                     ),
                   ),
                 ],
                 if (actions != null) ...[
-                  const SizedBox(height: DsSpacing.xxl),
-                  Wrap(
-                    spacing: DsSpacing.md,
-                    runSpacing: DsSpacing.md,
+                  const Spacer(),
+                  Row(
                     children: actions!,
                   ),
-                ],
+                ] else
+                  const Spacer(),
               ],
             ),
           ),
@@ -633,3 +602,4 @@ class DsHeroSection extends StatelessWidget {
     );
   }
 }
+

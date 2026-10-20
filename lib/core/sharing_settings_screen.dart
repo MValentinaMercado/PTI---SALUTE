@@ -92,7 +92,7 @@ class SharingSettingsScreen extends StatelessWidget {
                         const SizedBox(height: 14),
                         const Text(
                           'COMPARTIDOS CONTIGO',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.6, color: Colors.grey),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.6, color: SaluteColors.textMuted),
                         ),
                         const SizedBox(height: 10),
                         for (final p in sharedWithMe)
@@ -160,14 +160,14 @@ class _ProfileSharingCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       sharedNames.isEmpty ? 'Solo vos' : 'Compartido con ${sharedNames.join(', ')}',
-                      style: TextStyle(fontSize: 12, color: sharedNames.isEmpty ? Colors.grey[600] : SaluteColors.primaryGreen),
+                      style: TextStyle(fontSize: 12, color: sharedNames.isEmpty ? SaluteColors.textMuted : SaluteColors.primaryGreen),
                     ),
                   ],
                 ),
               ),
               Icon(
                 sharedNames.isEmpty ? Icons.lock_outline : Icons.people_alt_outlined,
-                color: sharedNames.isEmpty ? Colors.grey[400] : SaluteColors.primaryGreen,
+                color: sharedNames.isEmpty ? SaluteColors.textMuted : SaluteColors.primaryGreen,
               ),
             ],
           ),

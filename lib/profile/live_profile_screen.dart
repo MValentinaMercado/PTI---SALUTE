@@ -52,12 +52,7 @@ class LiveProfileScreen extends StatefulWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onBackToDashboard;
 
-  const LiveProfileScreen({
-    super.key,
-    required this.profile,
-    this.onEdit,
-    this.onBackToDashboard,
-  });
+  const LiveProfileScreen({super.key, required this.profile, this.onEdit, this.onBackToDashboard});
 
   @override
   State<LiveProfileScreen> createState() => _LiveProfileScreenState();
@@ -73,17 +68,14 @@ class _LiveProfileScreenState extends State<LiveProfileScreen> {
   void didUpdateWidget(covariant LiveProfileScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Si llegó un perfil actualizado (con su propia foto), manda ese.
-    if (oldWidget.profile.avatarUrl != widget.profile.avatarUrl)
-      _avatarOverride = null;
+    if (oldWidget.profile.avatarUrl != widget.profile.avatarUrl) _avatarOverride = null;
   }
 
   @override
   Widget build(BuildContext context) {
     final override = _avatarOverride;
     return _LiveProfileView(
-      profile: override == null
-          ? widget.profile
-          : widget.profile.copyWith(avatarUrl: override),
+      profile: override == null ? widget.profile : widget.profile.copyWith(avatarUrl: override),
       onEdit: widget.onEdit,
       onBackToDashboard: widget.onBackToDashboard,
       onAvatarChanged: (url) => setState(() => _avatarOverride = url),
@@ -107,14 +99,10 @@ class _LiveProfileView extends StatelessWidget {
   /// Solo quien administra el perfil (el propio o un dependiente suyo) puede
   /// cambiarle la foto: es la misma condición que exigen las reglas de
   /// Firestore para escribir en `profiles/{id}`.
-  bool get _canEditPhoto =>
-      profile.ownerUid == FirebaseAuth.instance.currentUser?.uid;
+  bool get _canEditPhoto => profile.ownerUid == FirebaseAuth.instance.currentUser?.uid;
 
   Future<void> _changePhoto(BuildContext context) async {
-    final result = await AvatarPhoto.choose(
-      context,
-      hasPhoto: profile.avatarUrl.isNotEmpty,
-    );
+    final result = await AvatarPhoto.choose(context, hasPhoto: profile.avatarUrl.isNotEmpty);
     if (result == null) return; // canceló
     try {
       await ProfileService.instance.setAvatar(profile.id, result);
@@ -125,34 +113,27 @@ class _LiveProfileView extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('No se pudo guardar la foto. Intentá de nuevo.'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: SaluteColors.danger,
           ),
         );
       }
     }
   }
 
-  String _formatTimes(List<String> times) =>
-      times.isEmpty ? 'Sin horario' : times.join(' / ');
+  String _formatTimes(List<String> times) => times.isEmpty ? 'Sin horario' : times.join(' / ');
 
-  List<FamilyAlertData> _buildAlerts(
-    AgendaEvent? nextEvent,
-    List<Medication> medications,
-  ) {
+  List<FamilyAlertData> _buildAlerts(AgendaEvent? nextEvent, List<Medication> medications) {
     final alerts = <FamilyAlertData>[];
 
     if (nextEvent != null) {
       final d = nextEvent.date;
-      final dateLabel =
-          '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} · '
+      final dateLabel = '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} · '
           '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
       alerts.add(
         FamilyAlertData(
           tag: _typeLabels[nextEvent.type] ?? 'AGENDA',
           title: nextEvent.title,
-          subtitle: nextEvent.location.isNotEmpty
-              ? '$dateLabel · ${nextEvent.location}'
-              : dateLabel,
+          subtitle: nextEvent.location.isNotEmpty ? '$dateLabel · ${nextEvent.location}' : dateLabel,
           bgColor: SaluteColors.primaryGreen,
           icon: _typeIcons[nextEvent.type] ?? Icons.event_note_outlined,
         ),
@@ -177,15 +158,13 @@ class _LiveProfileView extends StatelessWidget {
 
   List<MedicationData> _buildMedications(List<Medication> medications) {
     return medications
-        .map(
-          (m) => MedicationData(
-            id: m.id,
-            name: m.name,
-            dose: m.timesOfDay.isNotEmpty ? _formatTimes(m.timesOfDay) : m.dose,
-            progress: m.progress,
-            isChronic: m.isChronic,
-          ),
-        )
+        .map((m) => MedicationData(
+      id: m.id,
+      name: m.name,
+      dose: m.timesOfDay.isNotEmpty ? _formatTimes(m.timesOfDay) : m.dose,
+      progress: m.progress,
+      isChronic: m.isChronic,
+    ))
         .toList();
   }
 
@@ -234,8 +213,7 @@ class _LiveProfileView extends StatelessWidget {
   String _wellbeingSummary(VitalEntry? e) {
     if (e == null) return 'Sin datos aún';
     if (e.heartRate != null) return '${e.heartRate} bpm';
-    if (e.sleepHours != null)
-      return '${e.sleepHours!.toStringAsFixed(1)} h sueño';
+    if (e.sleepHours != null) return '${e.sleepHours!.toStringAsFixed(1)} h sueño';
     if (e.weightKg != null) return '${e.weightKg!.toStringAsFixed(1)} kg';
     if (e.steps != null) return '${e.steps} pasos';
     if (e.stressLevel != null) return 'Estrés ${e.stressLevel!.name}';
@@ -247,8 +225,7 @@ class _LiveProfileView extends StatelessWidget {
     // Sin consentimiento NO se abre ningún stream clínico: Firestore
     // rechazaría la consulta (permission-denied) y además no corresponde
     // mostrar datos de salud de alguien que no los compartió.
-    if (!_canSeeClinical)
-      return _LockedProfileView(profile: profile, onBack: onBackToDashboard);
+    if (!_canSeeClinical) return _LockedProfileView(profile: profile, onBack: onBackToDashboard);
 
     if (!_sosApplies) return _buildLive(context, null);
     return StreamBuilder<SosContact?>(
@@ -270,16 +247,17 @@ class _LiveProfileView extends StatelessWidget {
               stream: VitalsService.instance.watchForProfile(profile.id),
               builder: (context, vitalsSnap) {
                 final vitals = vitalsSnap.data ?? const <VitalEntry>[];
+                final latestVital = profile.type == ProfileType.mascota
+                    ? null
+                    : mergeLatestVitalEntries(vitals);
                 final baseData = profile.toDisplayData();
                 final member = baseData.copyWith(
                   alerts: _buildAlerts(nextEvent, medications),
                   medications: _buildMedications(medications),
-                  latestVital: profile.type == ProfileType.mascota
-                      ? null
-                      : (vitals.isEmpty ? null : vitals.first),
                   wellbeingValue: profile.type == ProfileType.mascota
                       ? _petWeightSummary(vitals)
                       : _wellbeingSummary(vitals.isEmpty ? null : vitals.first),
+                  latestVital: latestVital,
                   emergencyContact: _sosLabel(sos),
                   emergencyName: sos?.displayName,
                   emergencyPhone: sos?.phoneNumber,
@@ -289,25 +267,17 @@ class _LiveProfileView extends StatelessWidget {
                   member: member,
                   onEdit: onEdit,
                   onBackToDashboard: onBackToDashboard,
-                  onChangePhoto: _canEditPhoto
-                      ? () => _changePhoto(context)
-                      : null,
+                  onChangePhoto: _canEditPhoto ? () => _changePhoto(context) : null,
                   // Mismo comportamiento que el Protocolo de Emergencia del
                   // Diario: tocar el contacto llama; el lápiz lo cambia.
-                  onCallEmergency:
-                      sos != null && sos.phoneNumber.trim().isNotEmpty
+                  onCallEmergency: sos != null && sos.phoneNumber.trim().isNotEmpty
                       ? () => SosActions.call(context, sos)
                       : null,
-                  onEditEmergency: _sosApplies
-                      ? () => SosActions.pickAndSave(context)
-                      : null,
+                  onEditEmergency: _sosApplies ? () => SosActions.pickAndSave(context) : null,
                   onQuickRecord: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => MedicalSheetScreen(
-                          profileId: profile.id,
-                          profileName: profile.name,
-                        ),
+                        builder: (_) => MedicalSheetScreen(profileId: profile.id, profileName: profile.name),
                       ),
                     );
                   },
@@ -315,9 +285,7 @@ class _LiveProfileView extends StatelessWidget {
                   // personas (Calendario Nacional según la edad).
                   onOpenVaccines: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => VaccineCardScreen(profile: profile),
-                      ),
+                      MaterialPageRoute(builder: (_) => VaccineCardScreen(profile: profile)),
                     );
                   },
                   // Una mascota no tiene bio-métricas (sueño, pasos, estrés):
@@ -327,10 +295,7 @@ class _LiveProfileView extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => profile.type == ProfileType.mascota
                             ? PetWeightScreen(profile: profile)
-                            : BiometricsScreen(
-                                profileId: profile.id,
-                                profileName: profile.name,
-                              ),
+                            : BiometricsScreen(profileId: profile.id, profileName: profile.name),
                       ),
                     );
                   },
@@ -355,10 +320,7 @@ class _LiveProfileView extends StatelessWidget {
                   },
                   onOpenChecklist: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            MedicationChecklistScreen(profile: profile),
-                      ),
+                      MaterialPageRoute(builder: (_) => MedicationChecklistScreen(profile: profile)),
                     );
                   },
                 );
@@ -385,10 +347,7 @@ class _LockedProfileView extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            AppHeader.secondary(
-              title: 'Perfil',
-              onBack: onBack ?? () => Navigator.of(context).maybePop(),
-            ),
+            AppHeader.secondary(title: 'Perfil', onBack: onBack ?? () => Navigator.of(context).maybePop()),
             Expanded(
               child: Center(
                 child: Padding(
@@ -401,27 +360,16 @@ class _LockedProfileView extends StatelessWidget {
                       Text(
                         profile.fullName,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 24),
-                      const Icon(
-                        Icons.lock_outline,
-                        size: 36,
-                        color: Colors.grey,
-                      ),
+                      const Icon(Icons.lock_outline, size: 36, color: SaluteColors.textMuted),
                       const SizedBox(height: 12),
                       Text(
                         'Este perfil no compartió su información de salud con vos.\n'
-                        'Quien lo administra puede darte acceso desde Familia.',
+                            'Quien lo administra puede darte acceso desde Familia.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
+                        style: TextStyle(color: SaluteColors.textMuted, fontSize: 14, height: 1.4),
                       ),
                     ],
                   ),

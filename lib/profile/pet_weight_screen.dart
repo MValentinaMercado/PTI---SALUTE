@@ -131,9 +131,9 @@ class _PetWeightScreenState extends State<PetWeightScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w800,
-                                color: Colors.grey[600],
+                                color: SaluteColors.textMuted,
                                 letterSpacing: 0.8,
                               ),
                             ),
@@ -147,7 +147,7 @@ class _PetWeightScreenState extends State<PetWeightScreen> {
                               Text(
                                 'Registrado el ${_fmtDate(weights.first.date)}'
                                 '${delta != null ? ' · ${delta >= 0 ? '+' : '−'}${delta.abs().toStringAsFixed(2).replaceAll('.', ',')} kg vs. el registro anterior' : ''}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
                               ),
                             ],
                           ],
@@ -179,7 +179,7 @@ class _PetWeightScreenState extends State<PetWeightScreen> {
                           _canEdit
                               ? 'Todavía no hay registros. Cargá el primero con el botón de arriba.'
                               : 'Todavía no hay registros.',
-                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: 13, color: SaluteColors.textMuted),
                         )
                       else
                         for (final e in weights)
@@ -191,7 +191,7 @@ class _PetWeightScreenState extends State<PetWeightScreen> {
                             trailing: _canEdit
                                 ? IconButton(
                                     tooltip: 'Borrar',
-                                    icon: Icon(Icons.delete_outline, color: Colors.grey[600]),
+                                    icon: Icon(Icons.delete_outline, color: SaluteColors.textMuted),
                                     onPressed: () => _delete(e, weights),
                                   )
                                 : null,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:saluteapp/components/voice_buttons.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/medical_record.dart';
 import 'package:saluteapp/core/services/medical_record_service.dart';
@@ -176,9 +177,11 @@ class _ConsultaFormScreenState extends State<ConsultaFormScreen> {
                   children: [
                     const Icon(Icons.calendar_today_outlined, size: 18, color: SaluteColors.primaryGreen),
                     const SizedBox(width: 10),
-                    Text(
-                      '${_date.day.toString().padLeft(2, '0')}/${_date.month.toString().padLeft(2, '0')}/${_date.year}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    Flexible(
+                      child: Text(
+                        '${_date.day.toString().padLeft(2, '0')}/${_date.month.toString().padLeft(2, '0')}/${_date.year}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ],
                 ),
@@ -210,12 +213,10 @@ class _ConsultaFormScreenState extends State<ConsultaFormScreen> {
             const SizedBox(height: 8),
             Text(
               'El diagnóstico, las indicaciones y las notas se guardan cifrados.',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              height: 52,
-              child: ElevatedButton(
+            ConstrainedBox(constraints: const BoxConstraints(minHeight: 52), child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: SaluteColors.primaryGreen,
@@ -247,7 +248,15 @@ class _ConsultaFormScreenState extends State<ConsultaFormScreen> {
       maxLines: 6,
       keyboardType: TextInputType.multiline,
       textCapitalization: TextCapitalization.sentences,
-      decoration: _decoration(hint),
+      decoration: _decoration(hint).copyWith(
+        // Dictado por voz para los campos largos.
+        suffixIcon: Align(
+          alignment: Alignment.topRight,
+          widthFactor: 1,
+          heightFactor: 1,
+          child: DictationButton(controller: c),
+        ),
+      ),
     );
   }
 

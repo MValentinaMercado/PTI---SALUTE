@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:saluteapp/components/design_system.dart';
+import 'package:saluteapp/components/a11y_tap.dart';
+import 'package:saluteapp/components/ai_insight_card.dart';
+import 'package:saluteapp/components/design_patterns.dart';
 import 'package:saluteapp/core/colors.dart';
 import 'package:saluteapp/core/models/medical_record.dart';
+import 'package:saluteapp/core/services/ai_insight_service.dart';
 import 'package:saluteapp/core/services/medical_record_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,10 +26,11 @@ import 'package:saluteapp/core/services/medical_record_service.dart';
 // historial emocional, porque no se pueden convertir a una emoción sin
 // inventar el dato.
 //
-// Lo que queda pendiente a propósito: el insight de IA ("Salute AI
-// Diagnóstico"). Generar ese texto requiere integrar un LLM u otro
-// servicio externo, así que en vez de simularlo con un texto fijo, se
-// muestra un estado "Próximamente" honesto.
+// Insight de IA ("Salute AI Diagnóstico"): lo resuelve `AiInsightCard`
+// (AiInsightService). Se alimenta con los check-ins con emoción de los
+// últimos 30 días (`_buildAiData`) y se vuelve a ejecutar cada vez que se
+// guarda un check-in. Hasta tener 3 check-ins muestra un aviso en vez de
+// inventar un análisis.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const List<String> kFocoOptions = ['Concentrado', 'Distraído', 'Nublado'];
@@ -119,6 +123,7 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
   bool _loadingHistory = true;
   bool _saving = false;
   List<_MoodEntry> _entries = [];
+  final _insightCtrl = AiInsightController();
 
   @override
   void initState() {
@@ -155,6 +160,42 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
         SnackBar(content: Text('No se pudo cargar el historial emocional: $e')),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  static String _opt(List<String> options, int i) =>
+      options[i < 0 ? 0 : (i > 2 ? 2 : i)];
+
+  /// Check-ins con emoción de los últimos 30 días (los viejos, sin emoción,
+  /// no se pueden interpretar).
+  List<_MoodEntry> get _recentWithEmotion {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+    return _entries
+        .where((e) => e.emotion != null && e.date.isAfter(cutoff))
+        .toList();
+  }
+
+  Map<String, dynamic> _buildAiData() {
+    final now = DateTime.now();
+    final list = _recentWithEmotion;
+    final recent = list.length > 30 ? list.sublist(list.length - 30) : list;
+    return AiPayload.clean({
+      'checkins': [
+        for (final e in recent)
+          {
+            'diasAtras': now.difference(e.date).inDays,
+            'emocion': e.emotion!.label,
+            'emocionDificil': e.emotion!.difficult,
+            'foco': _opt(kFocoOptions, e.foco),
+            'energia': _opt(kEnergiaOptions, e.energia),
+            'ansiedad': _opt(kAnsiedadOptions, e.ansiedad),
+          },
+      ],
+    });
   }
 
   Future<void> _saveCheckIn() async {
@@ -206,6 +247,7 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
           ),
         ),
       );
+      _insightCtrl.run();
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -231,45 +273,54 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
             Expanded(
               child: _loadingHistory
                   ? const Center(
-                      child: CircularProgressIndicator(
-                        color: SaluteColors.primaryGreen,
-                      ),
-                    )
+                child: CircularProgressIndicator(
+                  color: SaluteColors.primaryGreen,
+                ),
+              )
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
-                      ),
-                      child: Column(
-                        children: [
-                          _TrendCard(entries: _entries),
-                          const SizedBox(height: 24),
-                          _EmotionPicker(
-                            selected: _selectedEmotion,
-                            onSelect: (v) =>
-                                setState(() => _selectedEmotion = v),
-                          ),
-                          const SizedBox(height: 24),
-                          _CognitiveMatrix(
-                            selectedFoco: _selectedFoco,
-                            selectedEnergia: _selectedEnergia,
-                            selectedAnsiedad: _selectedAnsiedad,
-                            onFoco: (v) => setState(() => _selectedFoco = v),
-                            onEnergia: (v) =>
-                                setState(() => _selectedEnergia = v),
-                            onAnsiedad: (v) =>
-                                setState(() => _selectedAnsiedad = v),
-                          ),
-                          const SizedBox(height: 24),
-                          _TriggersDetected(entries: _entries),
-                          const SizedBox(height: 24),
-                          const _AIInsightCard(),
-                          const SizedBox(height: 24),
-                          _SaveButton(saving: _saving, onTap: _saveCheckIn),
-                          const SizedBox(height: 32),
-                        ],
-                      ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Column(
+                  children: [
+                    _TrendCard(entries: _entries),
+                    const SizedBox(height: 24),
+                    _EmotionPicker(
+                      selected: _selectedEmotion,
+                      onSelect: (v) =>
+                          setState(() => _selectedEmotion = v),
                     ),
+                    const SizedBox(height: 24),
+                    _CognitiveMatrix(
+                      selectedFoco: _selectedFoco,
+                      selectedEnergia: _selectedEnergia,
+                      selectedAnsiedad: _selectedAnsiedad,
+                      onFoco: (v) => setState(() => _selectedFoco = v),
+                      onEnergia: (v) =>
+                          setState(() => _selectedEnergia = v),
+                      onAnsiedad: (v) =>
+                          setState(() => _selectedAnsiedad = v),
+                    ),
+                    const SizedBox(height: 24),
+                    _TriggersDetected(entries: _entries),
+                    const SizedBox(height: 24),
+                    AiInsightCard(
+                      key: ValueKey('ai-emocional-${widget.profileId}'),
+                      kind: 'emocional',
+                      profileId: widget.profileId,
+                      controller: _insightCtrl,
+                      buildData: _buildAiData,
+                      ready: _recentWithEmotion.length >= 3,
+                      notReadyHint:
+                      'Guardá al menos 3 check-ins para que el análisis tenga de dónde partir.',
+                    ),
+                    const SizedBox(height: 24),
+                    _SaveButton(saving: _saving, onTap: _saveCheckIn),
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -293,7 +344,8 @@ class _MoodAppBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Row(
         children: [
-          GestureDetector(
+          A11yTap(
+            label: 'Volver',
             onTap: onBack ?? () => Navigator.maybePop(context),
             child: const Icon(
               Icons.arrow_back,
@@ -317,7 +369,7 @@ class _MoodAppBar extends StatelessWidget {
                   profileName,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.grey.shade500,
+                    color: SaluteColors.textMuted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -369,16 +421,16 @@ class _TrendCard extends StatelessWidget {
   List<_Emotion?> _emotionsFor(List<DateTime> days) {
     return days.map((day) {
       final dayEntries =
-          entries
-              .where(
-                (e) =>
-                    e.emotion != null &&
-                    e.date.year == day.year &&
-                    e.date.month == day.month &&
-                    e.date.day == day.day,
-              )
-              .toList()
-            ..sort((a, b) => a.date.compareTo(b.date));
+      entries
+          .where(
+            (e) =>
+        e.emotion != null &&
+            e.date.year == day.year &&
+            e.date.month == day.month &&
+            e.date.day == day.day,
+      )
+          .toList()
+        ..sort((a, b) => a.date.compareTo(b.date));
       return dayEntries.isEmpty ? null : dayEntries.last.emotion;
     }).toList();
   }
@@ -386,8 +438,8 @@ class _TrendCard extends StatelessWidget {
   /// Emoción que más se repitió en la ventana de 7 días, con su cantidad
   /// y el total de check-ins considerados. `null` si no hay ninguno.
   ({_Emotion emotion, int count, int total})? _predominant(
-    DateTime windowStart,
-  ) {
+      DateTime windowStart,
+      ) {
     final inWindow = entries
         .where((e) => e.emotion != null && !e.date.isBefore(windowStart))
         .toList();
@@ -441,9 +493,12 @@ class _TrendCard extends StatelessWidget {
                       predominant == null
                           ? 'Todavía sin registros esta semana'
                           : 'Predominó: ${predominant.emotion.emoji} ${predominant.emotion.label} '
-                                '(${predominant.count} de ${predominant.total} '
-                                'check-in${predominant.total == 1 ? '' : 's'})',
-                      style: const TextStyle(color: Colors.grey, fontSize: 13),
+                          '(${predominant.count} de ${predominant.total} '
+                          'check-in${predominant.total == 1 ? '' : 's'})',
+                      style: const TextStyle(
+                        color: SaluteColors.textMuted,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -461,7 +516,7 @@ class _TrendCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(
                 'Registrá tu primer check-in emocional para empezar a ver tu historial acá.',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                style: TextStyle(color: SaluteColors.textMuted, fontSize: 13),
               ),
             )
           else
@@ -483,24 +538,24 @@ class _TrendCard extends StatelessWidget {
                         ),
                         child: emotion == null
                             ? Text(
-                                '–',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade400,
-                                ),
-                              )
+                          '–',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: SaluteColors.textMuted,
+                          ),
+                        )
                             : Text(
-                                emotion.emoji,
-                                style: const TextStyle(fontSize: 22),
-                              ),
+                          emotion.emoji,
+                          style: const TextStyle(fontSize: 22),
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         _weekdayAbbrev[days[i].weekday - 1],
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade400,
+                          fontSize: 12,
+                          color: SaluteColors.textMuted,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -531,11 +586,11 @@ class _EmotionPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const DsSectionTitle(title: 'Estado emocional'),
+        const DsSectionHeader(title: 'Estado emocional'),
         const SizedBox(height: 4),
         Text(
           '¿Qué emoción describe mejor cómo te sentís ahora?',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          style: TextStyle(fontSize: 13, color: SaluteColors.textMuted),
         ),
         const SizedBox(height: 16),
         // 2 filas × 3 emociones.
@@ -643,7 +698,7 @@ class _CognitiveMatrix extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const DsSectionTitle(title: 'Matriz Cognitiva'),
+        const DsSectionHeader(title: 'Matriz Cognitiva'),
         const SizedBox(height: 16),
         _MatrixSection(
           title: 'FOCO & ATENCIÓN',
@@ -697,7 +752,7 @@ class _MatrixSection extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
               color: SaluteColors.primaryGreen,
               letterSpacing: 0.5,
@@ -721,20 +776,20 @@ class _MatrixSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                       border: isSelected
                           ? Border.all(
-                              color: SaluteColors.darkGreen,
-                              width: 1.5,
-                            )
+                        color: SaluteColors.darkGreen,
+                        width: 1.5,
+                      )
                           : null,
                       boxShadow: isSelected
                           ? [
-                              BoxShadow(
-                                color: SaluteColors.primaryGreen.withValues(
-                                  alpha: 0.3,
-                                ),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
+                        BoxShadow(
+                          color: SaluteColors.primaryGreen.withValues(
+                            alpha: 0.3,
+                          ),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
                           : null,
                     ),
                     child: Center(
@@ -822,7 +877,7 @@ class _TriggersDetected extends StatelessWidget {
     return _TriggerStat(
       title: title,
       subtitle:
-          'Emociones difíciles según el nivel: '
+      'Emociones difíciles según el nivel: '
           '${(negShare * 100).round()} % vs. ${(posShare * 100).round()} %',
       icon: icon,
       diffPts: (negShare - posShare) * 100,
@@ -871,12 +926,14 @@ class _TriggersDetected extends StatelessWidget {
                 size: 22,
               ),
               SizedBox(width: 8),
-              Text(
-                'Patrones Detectados',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                  color: SaluteColors.primaryGreen,
+              Expanded(
+                child: Text(
+                  'Patrones Detectados',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    color: SaluteColors.primaryGreen,
+                  ),
                 ),
               ),
             ],
@@ -886,7 +943,7 @@ class _TriggersDetected extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               'Calculado sobre tus check-ins guardados, no es un diagnóstico.',
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
             ),
           ),
           const SizedBox(height: 16),
@@ -933,7 +990,7 @@ class _TriggerItem extends StatelessWidget {
                 ),
                 Text(
                   stat.subtitle,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
                 ),
               ],
             ),
@@ -948,81 +1005,8 @@ class _TriggerItem extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.bold,
               color: diff == null
-                  ? Colors.grey
-                  : (isAlert ? Colors.redAccent : SaluteColors.primaryGreen),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. SALUTE AI DIAGNÓSTICO — pendiente (requiere integración externa)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AIInsightCard extends StatelessWidget {
-  const _AIInsightCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: SaluteColors.primaryGreen.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: SaluteColors.primaryGreen.withValues(alpha: 0.3),
-          style: BorderStyle.solid,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.auto_awesome,
-                color: Colors.white.withValues(alpha: 0.9),
-                size: 16,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'SALUTE AI DIAGNÓSTICO',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 10,
-                  letterSpacing: 1,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Próximamente',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Esta sección va a analizar tus check-ins con inteligencia artificial para detectar correlaciones más finas (por ejemplo, con sueño o actividad física). Todavía no está conectada a ningún servicio de IA.',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              height: 1.5,
-              fontWeight: FontWeight.w500,
+                  ? SaluteColors.textMuted
+                  : (isAlert ? SaluteColors.danger : SaluteColors.primaryGreen),
             ),
           ),
         ],
@@ -1042,9 +1026,11 @@ class _SaveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minWidth: double.infinity,
+        minHeight: 52,
+      ),
       child: ElevatedButton(
         onPressed: saving ? null : onTap,
         style: ElevatedButton.styleFrom(
@@ -1056,22 +1042,22 @@ class _SaveButton extends StatelessWidget {
         ),
         child: saving
             ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2.5,
-                ),
-              )
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            color: Colors.white,
+            strokeWidth: 2.5,
+          ),
+        )
             : const Text(
-                'GUARDAR CHECK-IN DE HOY',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                  letterSpacing: 0.5,
-                ),
-              ),
+          'GUARDAR CHECK-IN DE HOY',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            letterSpacing: 0.5,
+          ),
+        ),
       ),
     );
   }

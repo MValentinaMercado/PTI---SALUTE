@@ -2,18 +2,8 @@ import 'package:saluteapp/core/models/family_profile.dart';
 import 'package:saluteapp/profile/profileCard.dart';
 
 const _monthNames = [
-  'Ene',
-  'Feb',
-  'Mar',
-  'Abr',
-  'May',
-  'Jun',
-  'Jul',
-  'Ago',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dic',
+  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
 ];
 
 String _formatDate(DateTime date) {
@@ -23,8 +13,7 @@ String _formatDate(DateTime date) {
 int _ageInYears(DateTime birthDate) {
   final now = DateTime.now();
   var years = now.year - birthDate.year;
-  final birthdayAlreadyHappened =
-      (now.month > birthDate.month) ||
+  final birthdayAlreadyHappened = (now.month > birthDate.month) ||
       (now.month == birthDate.month && now.day >= birthDate.day);
   if (!birthdayAlreadyHappened) years -= 1;
   return years;
@@ -49,12 +38,8 @@ extension FamilyProfileDisplay on FamilyProfile {
       avatarUrl: avatarUrl,
       bloodType: bloodType.isNotEmpty ? bloodType : '—',
       allergies: allergies.isNotEmpty ? allergies : 'Ninguna registrada',
-      lastCheckup: lastCheckup != null
-          ? _formatDate(lastCheckup!)
-          : 'Sin registrar',
-      emergencyContact: emergencyContact.isNotEmpty
-          ? emergencyContact
-          : 'Sin configurar',
+      lastCheckup: lastCheckup != null ? _formatDate(lastCheckup!) : 'Sin registrar',
+      emergencyContact: emergencyContact.isNotEmpty ? emergencyContact : 'Sin configurar',
       // null = no aplica (mascotas): la ficha no muestra el casillero.
       insurance: type == ProfileType.persona
           ? (insurance.isNotEmpty ? insurance : 'Sin registrar')
@@ -62,11 +47,8 @@ extension FamilyProfileDisplay on FamilyProfile {
       // Una mascota no tiene sueño, pasos ni estrés: su tarjeta es la del
       // peso (el valor real lo completa LiveProfileScreen con el historial).
       wellbeingLabel: type == ProfileType.mascota ? 'PESO' : 'MÉTRICAS',
-      wellbeingTitle: type == ProfileType.mascota
-          ? 'Peso actual'
-          : 'Bienestar Actual',
+      wellbeingTitle: type == ProfileType.mascota ? 'Peso actual' : 'Bienestar Actual',
       wellbeingValue: 'Sin datos aún',
-      latestVital: null,
       isPet: type == ProfileType.mascota,
       // Cabecera: en una mascota, especie y raza (si están cargadas).
       badges: type == ProfileType.mascota

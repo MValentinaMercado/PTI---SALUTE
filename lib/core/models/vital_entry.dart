@@ -26,7 +26,7 @@ class VitalEntry {
   final String profileId;
   final DateTime date;
   final int? heartRate; // BPM
-  final double? bloodOxygen; // porcentaje
+  final double? bloodOxygen; // porcentaje de saturación
   final double? sleepHours;
   final double? weightKg;
   final int? steps;

@@ -1,3 +1,4 @@
+import 'package:saluteapp/core/services/sos_contact_service.dart';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:saluteapp/core/services/attachment_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Borra los datos de un usuario en Firestore y en el dispositivo.
@@ -46,6 +48,8 @@ class AccountDeletionService {
   }
 
   Future<void> deleteAllUserData(String uid) async {
+    // Copia local del contacto SOS (almacenamiento seguro del teléfono).
+    await SosContactService.instance.clearLocalFor(uid);
     final userRef = _db.collection('users').doc(uid);
     final familyId = (await userRef.get()).data()?['familyId'] as String?;
 
@@ -88,8 +92,12 @@ class AccountDeletionService {
     await Future.wait([
       _safe('adjuntos', () async {
         final root = await getApplicationDocumentsDirectory();
-        final dir = Directory('${root.path}/ordenes');
-        if (await dir.exists()) await dir.delete(recursive: true);
+        // Las dos carpetas donde AttachmentService guarda archivos.
+        for (final folder in const ['ordenes', 'vacunas']) {
+          final dir = Directory('${root.path}/$folder');
+          if (await dir.exists()) await dir.delete(recursive: true);
+        }
+        await AttachmentService.instance.clearTempFiles();
       }),
       _safe('notificaciones', () => FlutterLocalNotificationsPlugin().cancelAll()),
       _safe('preferencias', () async => (await SharedPreferences.getInstance()).clear()),

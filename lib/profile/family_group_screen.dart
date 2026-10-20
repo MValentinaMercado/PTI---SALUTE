@@ -100,7 +100,7 @@ class _FamilyCodeViewState extends State<_FamilyCodeView> {
           const SizedBox(height: 4),
           Text(
             '${family.memberUids.length} miembro${family.memberUids.length == 1 ? '' : 's'} con cuenta propia',
-            style: TextStyle(fontSize: DsFontSize.md, color: Colors.grey[600]),
+            style: TextStyle(fontSize: DsFontSize.md, color: SaluteColors.textMuted),
           ),
           const SizedBox(height: 24),
           Container(
@@ -152,7 +152,7 @@ class _FamilyCodeViewState extends State<_FamilyCodeView> {
           const SizedBox(height: 8),
           Text(
             'Le mandamos el código por mail para que se una.',
-            style: TextStyle(fontSize: DsFontSize.md, color: Colors.grey[600]),
+            style: TextStyle(fontSize: DsFontSize.md, color: SaluteColors.textMuted),
           ),
           const SizedBox(height: 12),
           Row(
@@ -169,9 +169,7 @@ class _FamilyCodeViewState extends State<_FamilyCodeView> {
                 ),
               ),
               const SizedBox(width: 10),
-              SizedBox(
-                height: 56,
-                child: FilledButton(
+              ConstrainedBox(constraints: const BoxConstraints(minHeight: 56), child: FilledButton(
                   onPressed: _sending ? null : _handleInvite,
                   style: FilledButton.styleFrom(backgroundColor: SaluteColors.primaryGreen),
                   child: _sending
@@ -196,7 +194,7 @@ class _FamilyCodeViewState extends State<_FamilyCodeView> {
                 children: [
                   Text(
                     'INVITADOS PENDIENTES',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[500], letterSpacing: 0.6),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SaluteColors.textMuted, letterSpacing: 0.6),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
@@ -220,7 +218,7 @@ class _FamilyCodeViewState extends State<_FamilyCodeView> {
             'Compartí el código con quien quieras que se una con su '
             'propia cuenta. Los perfiles de hijos o mascotas que ya '
             'tengas cargados quedan visibles para toda la familia.',
-            style: TextStyle(fontSize: DsFontSize.md, color: Colors.grey[600], height: 1.4),
+            style: TextStyle(fontSize: DsFontSize.md, color: SaluteColors.textMuted, height: 1.4),
           ),
         ],
       ),
@@ -295,7 +293,7 @@ class _CreateOrJoinViewState extends State<_CreateOrJoinView> {
           const SizedBox(height: 8),
           Text(
             'Generá un código único para compartir con el resto de tu familia.',
-            style: TextStyle(fontSize: DsFontSize.md, color: Colors.grey[600]),
+            style: TextStyle(fontSize: DsFontSize.md, color: SaluteColors.textMuted),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -326,7 +324,7 @@ class _CreateOrJoinViewState extends State<_CreateOrJoinView> {
               Expanded(child: Divider(color: Colors.grey[300])),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text('o', style: TextStyle(color: Colors.grey[500])),
+                child: Text('o', style: TextStyle(color: SaluteColors.textMuted)),
               ),
               Expanded(child: Divider(color: Colors.grey[300])),
             ],
@@ -339,7 +337,7 @@ class _CreateOrJoinViewState extends State<_CreateOrJoinView> {
           const SizedBox(height: 8),
           Text(
             'Ingresá el código que te compartieron.',
-            style: TextStyle(fontSize: DsFontSize.md, color: Colors.grey[600]),
+            style: TextStyle(fontSize: DsFontSize.md, color: SaluteColors.textMuted),
           ),
           const SizedBox(height: 12),
           TextField(

@@ -1,7 +1,9 @@
+import 'package:saluteapp/components/a11y_tap.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:saluteapp/components/app_header.dart';
 import 'package:saluteapp/core/colors.dart';
+import 'package:saluteapp/core/services/app_settings_service.dart';
 import 'package:saluteapp/core/services/notifications_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,12 +135,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _loading ? 'Cargando...' : '$unreadCount sin leer · ${visible.length} en total',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey),
+                  Expanded(
+                    child: Text(
+                      _loading ? 'Cargando...' : '$unreadCount sin leer · ${visible.length} en total',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: SaluteColors.textMuted),
+                    ),
                   ),
-                  GestureDetector(
+                  const SizedBox(width: 8),
+                  A11yTap(
                     onTap: () => setState(() => _showOnlyUnread = !_showOnlyUnread),
+                    label: _showOnlyUnread ? 'Filtro: solo sin leer' : 'Filtro: todas',
+                    hint: 'Tocar para cambiar el filtro',
+                    selected: _showOnlyUnread,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
@@ -154,13 +162,44 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: _showOnlyUnread ? SaluteColors.primaryGreen : Colors.grey[600],
+                          color: _showOnlyUnread ? SaluteColors.primaryGreen : SaluteColors.textMuted,
                         ),
                       ),
                     ),
                   ),
                 ],
               ),
+            ),
+            // Aviso cuando el switch de Notificaciones está apagado.
+            ListenableBuilder(
+              listenable: AppSettingsService.instance,
+              builder: (context, _) {
+                if (AppSettingsService.instance.notificationsEnabled) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: SaluteColors.brownOrange.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: SaluteColors.brownOrange.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.notifications_off_outlined, size: 20, color: SaluteColors.brownOrange),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Las notificaciones están desactivadas: no recibís avisos en el teléfono ni ves el punto de novedades. Podés activarlas en Configuración.',
+                            style: TextStyle(fontSize: 13, height: 1.35),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
             Expanded(child: _buildBody(visible)),
           ],
@@ -180,7 +219,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('No se pudieron cargar las notificaciones: $_error', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
+              Text('No se pudieron cargar las notificaciones: $_error', textAlign: TextAlign.center, style: TextStyle(color: SaluteColors.textMuted)),
               const SizedBox(height: 12),
               TextButton(onPressed: _load, child: const Text('Reintentar')),
             ],
@@ -203,7 +242,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     const SizedBox(height: 16),
                     Text(
                       _showOnlyUnread ? 'No hay notificaciones sin leer' : 'No hay notificaciones por ahora',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: SaluteColors.textMuted),
                     ),
                   ],
                 ),
@@ -265,7 +304,7 @@ class _NotificationCard extends StatelessWidget {
       onDismissed: (_) => onDelete(),
       background: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(color: const Color(0xFFE74C3C), borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(color: SaluteColors.danger, borderRadius: BorderRadius.circular(16)),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         child: const Icon(Icons.delete_outline, color: Colors.white),
@@ -308,32 +347,33 @@ class _NotificationCard extends StatelessWidget {
                           ),
                         ),
                         if (!isRead)
-                          Container(
+                          Semantics(label: 'No leída', child: Container(
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(color: notification.color, shape: BoxShape.circle),
-                          ),
+                          )),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       notification.message,
-                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 13, color: SaluteColors.textMuted),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       _relativeLabel(notification.date, notification.kind),
-                      style: TextStyle(fontSize: 11, color: Colors.grey[400], fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 12, color: SaluteColors.textMuted, fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              GestureDetector(
+              A11yTap(
+                label: 'Descartar este aviso',
                 onTap: onDelete,
-                child: Icon(Icons.close, size: 20, color: Colors.grey[400]),
+                child: Icon(Icons.close, size: 20, color: SaluteColors.textMuted),
               ),
             ],
           ),

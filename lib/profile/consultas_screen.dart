@@ -112,7 +112,7 @@ class _ConsultasScreenState extends State<ConsultasScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '${_profile.name} · ${_fmtFull(r.date)}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  style: TextStyle(color: SaluteColors.textMuted, fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 if (r.professional.isNotEmpty) _DetailRow(label: proLabel, value: r.professional),
@@ -123,7 +123,7 @@ class _ConsultasScreenState extends State<ConsultasScreen> {
                 if (diagnosis.isEmpty && treatment.isEmpty && notes.isEmpty)
                   const Text(
                     'Sin diagnóstico ni indicaciones cargados.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+                    style: TextStyle(fontSize: 12, color: SaluteColors.textMuted, fontStyle: FontStyle.italic),
                   ),
                 if (_canEdit) ...[
                   const SizedBox(height: 16),
@@ -266,7 +266,7 @@ class _ConsultaCard extends StatelessWidget {
                     ),
                     Text(
                       _monthAbbr[record.date.month - 1],
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: SaluteColors.primaryGreen),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SaluteColors.primaryGreen),
                     ),
                   ],
                 ),
@@ -288,13 +288,13 @@ class _ConsultaCard extends StatelessWidget {
                         who,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 12, color: SaluteColors.textMuted),
                       ),
                     ],
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              const Icon(Icons.chevron_right, color: SaluteColors.textMuted),
             ],
           ),
         ),
@@ -315,7 +315,7 @@ class _DetailRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.grey[600])),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SaluteColors.textMuted)),
           const SizedBox(height: 2),
           Text(value, style: const TextStyle(fontSize: 14, height: 1.3)),
         ],
@@ -337,7 +337,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(isPet ? Icons.pets_outlined : Icons.medical_services_outlined, size: 44, color: Colors.grey[400]),
+            Icon(isPet ? Icons.pets_outlined : Icons.medical_services_outlined, size: 44, color: SaluteColors.textMuted),
             const SizedBox(height: 12),
             const Text('Todavía no hay consultas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
@@ -347,7 +347,7 @@ class _EmptyState extends StatelessWidget {
                       'Van a aparecer en el historial de la ficha.'
                   : 'Quien administra este perfil todavía no cargó consultas.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.35),
+              style: TextStyle(fontSize: 13, color: SaluteColors.textMuted, height: 1.35),
             ),
           ],
         ),

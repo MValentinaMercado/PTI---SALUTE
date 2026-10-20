@@ -62,7 +62,7 @@ class AvatarPhoto {
                   ? 'No se pudo abrir la cámara. Revisá los permisos de la app.'
                   : 'No se pudo abrir la galería. Revisá los permisos de la app.',
             ),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: SaluteColors.danger,
           ),
         );
       }
@@ -145,9 +145,11 @@ class _SheetOption extends StatelessWidget {
               child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(width: 14),
-            Text(
-              label,
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: color == SaluteColors.primaryGreen ? Colors.black87 : color),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: color == SaluteColors.primaryGreen ? Colors.black87 : color),
+              ),
             ),
           ],
         ),
