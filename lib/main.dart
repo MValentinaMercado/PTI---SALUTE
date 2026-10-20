@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'core/firebase_options.dart';
+import 'firebase_options.dart';
 import 'core/auth_service.dart';
 import 'core/services/profile_service.dart';
 import 'core/active_profile_controller.dart';
@@ -25,7 +25,10 @@ void main() async {
   } catch (e) {
     // Permite probar el flujo UI sin bloquear la app si Firebase no esta listo.
     debugPrint('Firebase init skipped for local UI testing: $e');
-    ErrorLog.instance.record(window: 'Arranque', error: 'Firebase.initializeApp falló: $e');
+    ErrorLog.instance.record(
+      window: 'Arranque',
+      error: 'Firebase.initializeApp falló: $e',
+    );
   }
   try {
     await LocalAlarmService.instance.init();
@@ -34,7 +37,10 @@ void main() async {
     // denegados). Las alarmas simplemente no se van a programar hasta
     // que el usuario las habilite y se reintente en el próximo uso.
     debugPrint('LocalAlarmService init falló: $e');
-    ErrorLog.instance.record(window: 'Arranque', error: 'LocalAlarmService.init falló: $e');
+    ErrorLog.instance.record(
+      window: 'Arranque',
+      error: 'LocalAlarmService.init falló: $e',
+    );
   }
   // Preferencias de accesibilidad (tamaño de texto, contraste, voz) antes del
   // primer frame, así la app no "salta" de tamaño al abrirse.
@@ -62,12 +68,18 @@ class MyApp extends StatelessWidget {
       colorScheme: scheme,
       fontFamily: 'Roboto',
       textTheme: highContrast
-          ? ThemeData(useMaterial3: true, brightness: Brightness.light, fontFamily: 'Roboto').textTheme.apply(
-                bodyColor: Colors.black,
-                displayColor: Colors.black,
-              )
+          ? ThemeData(
+              useMaterial3: true,
+              brightness: Brightness.light,
+              fontFamily: 'Roboto',
+            ).textTheme.apply(
+              bodyColor: Colors.black,
+              displayColor: Colors.black,
+            )
           : null,
-      dividerTheme: DividerThemeData(color: highContrast ? Colors.black54 : null),
+      dividerTheme: DividerThemeData(
+        color: highContrast ? Colors.black54 : null,
+      ),
       inputDecorationTheme: highContrast
           ? InputDecorationTheme(
               enabledBorder: OutlineInputBorder(
@@ -86,7 +98,12 @@ class MyApp extends StatelessWidget {
         behavior: SnackBarBehavior.floating,
         backgroundColor: highContrast ? Colors.black : const Color(0xFF2B2F2D),
         insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        contentTextStyle: const TextStyle(fontSize: 14, height: 1.35, color: Colors.white, fontWeight: FontWeight.w500),
+        contentTextStyle: const TextStyle(
+          fontSize: 14,
+          height: 1.35,
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
@@ -115,9 +132,7 @@ class MyApp extends StatelessWidget {
         ),
         // AuthGate decide si mostrar Login o el Shell según haya sesión activa.
         home: const AuthGate(),
-        routes: {
-          '/home': (context) => const SaluteShell(),
-        },
+        routes: {'/home': (context) => const SaluteShell()},
       ),
     );
   }
@@ -151,7 +166,9 @@ class _AuthGateState extends State<AuthGate> {
     _ensuredForUid = user.uid;
     _ensureFuture = ProfileService.instance.ensureSelfProfile(
       uid: user.uid,
-      name: user.displayName?.trim().isNotEmpty == true ? user.displayName!.trim() : 'Yo',
+      name: user.displayName?.trim().isNotEmpty == true
+          ? user.displayName!.trim()
+          : 'Yo',
     );
     return _ensureFuture!;
   }
@@ -231,7 +248,11 @@ class _DeletingAccountScreen extends StatelessWidget {
                 Text(
                   'Estamos borrando tus datos. Puede tardar unos segundos; no cierres la app.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, height: 1.4, color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: Colors.black54,
+                  ),
                 ),
               ],
             ),

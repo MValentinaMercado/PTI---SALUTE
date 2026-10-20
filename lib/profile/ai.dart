@@ -198,7 +198,11 @@ class _SaluteAIScreenState extends State<SaluteAIScreen> {
         prompt: _scanPrompt,
         systemPrompt: _scanSystemPrompt,
       );
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('Error IA: $e\n$st');
+      text = null;
+      if (mounted) _showSnack(e is AiException ? e.message : 'Error: $e');
+    }
 
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop(); // cierra el loading
@@ -400,7 +404,7 @@ const String _scanPrompt =
 const List<_AiOption> _aiOptions = [
   _AiOption(
     model: AiModel(
-      id: 'gemini-2.5-flash',
+      id: 'gemini-3.6-flash',
       name: 'Gemini Flash',
       provider: AiProvider.gemini,
     ),
@@ -715,9 +719,11 @@ class _ChatCardState extends State<_ChatCard> {
         List<AiMessage>.unmodifiable(_conv.messages),
         systemPrompt: widget.ai.systemPrompt,
       );
-    } catch (_) {
-      error =
-      '⚠️ Ocurrió un error al consultar con ${widget.ai.name}. Verificá tu conexión e intentá de nuevo.';
+    } catch (e, st) {
+      debugPrint('Error IA: $e\n$st');
+      error = e is AiException
+          ? e.message
+          : 'No se pudo obtener respuesta de la IA: $e';
     }
 
     // La respuesta se guarda aunque el usuario ya haya cambiado de pantalla.
