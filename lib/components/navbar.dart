@@ -60,7 +60,7 @@ class SaluteNavBar extends StatelessWidget {
               _NavItem(
                 icon:       Icons.chat_bubble_outline,
                 activeIcon: Icons.chat_bubble,
-                label: 'IA',
+                label: 'CHAT',
                 index: 3,
                 selectedIndex: selectedIndex,
                 onTap: onDestinationSelected,
